@@ -10,11 +10,16 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
+  <!-- Pisos de versão, não versões "mais novas disponíveis".
+       Uma biblioteca declara a MENOR versão com que funciona; quem consome escolhe subir.
+       Declarar 10.0.0 aqui quebrava o cambio-real-v3 com NU1109 (package downgrade), porque o
+       Directory.Packages.props dele fixa Microsoft.Extensions.Http em 9.0.5 e usa
+       CentralPackageTransitivePinningEnabled. 9.0.x roda sem ressalvas em net10.0. -->
   <ItemGroup Label="Runtime">
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">
