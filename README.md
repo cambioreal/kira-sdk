@@ -6,15 +6,21 @@ Consumidor primário: [`cambioreal/cambio-real-v3`](https://github.com/cambiorea
 
 ## Estado
 
-Esta é a **camada de transporte**. Ela está completa e testada:
+Os **27 endpoints documentados** da Kira estão implementados e tipados.
 
-- autenticação JWT com cache, single-flight e renovação automática em 401;
-- `x-api-key` em toda requisição, `Authorization: Bearer` onde a API exige;
-- idempotência (`idempotency-key`) e OTP (`x-validation-header`);
-- tradução de erros HTTP em exceções tipadas;
-- verificação de assinatura HMAC de webhooks, em tempo constante.
+A camada de transporte cuida de autenticação JWT com cache, single-flight e renovação automática em 401; `x-api-key` em toda requisição e `Authorization: Bearer` onde a API exige; idempotência (`idempotency-key`) e OTP (`x-validation-header`); tradução de erros HTTP em exceções tipadas; e verificação de assinatura HMAC de webhooks em tempo constante.
 
-Os **recursos tipados** (`users`, `virtual-accounts`, `payouts`, `payins`, `recipients`) **ainda não estão modelados**. A Kira não publica um OpenAPI e a documentação descreve os payloads em prosa, com contradições conhecidas (ver abaixo). Modelar esses contratos a partir da prosa produziria tipos que compilam e falham em produção. Use `GetAsync`/`PostAsync` com seus próprios contratos até que o probe contra o sandbox confirme os schemas.
+| Recurso | Endpoints | Fachada |
+|---|---|---|
+| Auth | 1 | interno (`IKiraTokenProvider`) |
+| Users, verificação, elegibilidade | 5 | `kira.Users` |
+| Recipients | 3 | `kira.Recipients` |
+| Virtual accounts, depósitos, payouts, liquidation | 11 | `kira.VirtualAccounts` |
+| PayIns (PSE, SPEI) | 3 | `kira.PayIns` |
+| Payment links | 1 | `kira.PaymentLinks` |
+| Webhooks, países, bancos, OTP | 4 | `kira.Platform` |
+
+> **Nenhum endpoint foi exercitado contra o sandbox ainda.** Os tipos foram derivados da documentação em prosa, que tem contradições conhecidas (ver abaixo). Respostas trazem `AdditionalData` (via `[JsonExtensionData]`) para que campos não modelados não se percam, e os paths estão centralizados em `KiraPaths` para que cada correção seja de uma linha.
 
 ## Uso
 
@@ -29,18 +35,45 @@ services.AddKiraClient(options =>
 ```
 
 ```csharp
-public sealed class OnboardingService(KiraClient kira)
+public sealed class RemittanceService(KiraClient kira)
 {
-    public Task<CreateUserResponse> CreateAsync(CreateUserRequest request, CancellationToken ct) =>
-        kira.PostAsync<CreateUserRequest, CreateUserResponse>(
-            "v1/users",
-            request,
-            KiraRequestContext.WithNewIdempotencyKey(),
-            ct);
+    public async Task<InitiatePayoutResponse> SendAsync(string virtualAccountId, string recipientId, decimal amount)
+    {
+        var preview = await kira.VirtualAccounts.PreviewPayoutAsync(
+            virtualAccountId,
+            new PreviewPayoutRequest { RecipientId = recipientId, Amount = amount, CreateQuote = true });
+
+        await kira.Platform.SendVerificationCodeAsync(new SendVerificationCodeRequest { Email = operatorEmail });
+
+        return await kira.VirtualAccounts.InitiatePayoutAsync(
+            virtualAccountId,
+            new InitiatePayoutRequest { RecipientId = recipientId, Amount = amount, QuoteId = preview.QuoteId },
+            otpCode: await PromptForOtpAsync(),
+            idempotencyKey: remittanceId);
+    }
 }
 ```
 
+Passe sempre a sua própria `idempotencyKey`, derivada do identificador da operação. Se você omitir, o SDK gera uma — o que torna a chamada idempotente apenas dentro do processo, e um retry após crash criaria um segundo payout.
+
 Paths são **relativos e sem barra inicial**. Isso não é estilo: o sandbox da Kira é um prefixo de path (`/sandbox`), não um subdomínio, e um `/` inicial faria a requisição escapar do prefixo e atingir produção. O cliente rejeita esses paths.
+
+### Elegibilidade não é um booleano
+
+A Kira avalia o usuário contra todos os produtos ativos e dispara o KYC assim que **ao menos um** deles tiver seus campos completos. Um `201` na criação não significa que a verificação começou.
+
+```csharp
+var user = await kira.Users.CreateAsync(request, idempotencyKey: onboardingId);
+
+if (user.VerificationTriggered != true)
+{
+    logger.LogWarning("KYC não disparou. Faltam: {Fields}", string.Join(", ", user.MissingFields));
+}
+```
+
+### Casing de enums
+
+A Kira mistura quatro convenções no mesmo payload: `verification_link` (snake), `INSTANT_PAY` (screaming snake), `usa-virtual-accounts` (kebab) e `Full` (pascal). Cada enum declara o seu próprio conversor. **Não adicione um `JsonStringEnumConverter` global** em `KiraJson.Options`: converters da coleção têm precedência sobre o atributo do tipo e uniformizariam tudo, quebrando três das quatro.
 
 ### Webhooks
 
@@ -80,6 +113,12 @@ Encontradas ao ler a documentação em 2026-07-09. Nenhuma foi resolvida contra 
 | 6 | Providers têm dois vocabulários: `portage`/`austin_capital_trust` vs `usa-virtual-accounts`/`usa-virtual-accounts-act` | Virtual Accounts vs `createUser` |
 | 7 | `/v1/batch-payouts` aparece só na lista de idempotência, sem documentação | Idempotency |
 | 8 | Wallets e cashPay são anunciados como produtos, mas não têm endpoints documentados | Product Comparison |
+
+Cada uma delas está anotada no código, no membro correspondente de `KiraPaths` ou do modelo afetado.
+
+### Buracos na documentação
+
+Não existe endpoint de **quotation**: a única forma documentada de obter uma quote é `create_quote: true` no `previewPayout`. Não existe **consulta de payout** — nenhum `GET /payouts/{id}` — então o webhook `transaction_update` é a única forma de acompanhar o status, o que torna webhooks um componente obrigatório da integração, não opcional. Não existe **listar ou remover webhook**, só registrar. E `POST /verification/send`, `/v1/batch-payouts` e `/v1/users/{id}/wallets` são citados de passagem sem especificação — o primeiro está implementado com path inferido; os outros dois, não.
 
 Além disso: `expires_in` é 3600 s e **não há refresh token**. O host é `api.balampay.com` (Kira é a marca, Balam Pay é a infraestrutura).
 

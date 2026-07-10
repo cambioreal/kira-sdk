@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using CambioReal.Kira.Http;
+using CambioReal.Kira.Resources;
 using CambioReal.Kira.Serialization;
 
 namespace CambioReal.Kira;
@@ -27,7 +28,32 @@ public sealed class KiraClient
     {
         ArgumentNullException.ThrowIfNull(httpClient);
         this.httpClient = httpClient;
+
+        Users = new UsersResource(this);
+        Recipients = new RecipientsResource(this);
+        VirtualAccounts = new VirtualAccountsResource(this);
+        PayIns = new PayInsResource(this);
+        PaymentLinks = new PaymentLinksResource(this);
+        Platform = new PlatformResource(this);
     }
+
+    /// <summary>Usuários, verificação e elegibilidade por produto.</summary>
+    public UsersResource Users { get; }
+
+    /// <summary>Destinatários de payout.</summary>
+    public RecipientsResource Recipients { get; }
+
+    /// <summary>Contas virtuais, depósitos, payouts e endereços de liquidação.</summary>
+    public VirtualAccountsResource VirtualAccounts { get; }
+
+    /// <summary>Coleta de pagamentos via PSE e SPEI.</summary>
+    public PayInsResource PayIns { get; }
+
+    /// <summary>Payment links.</summary>
+    public PaymentLinksResource PaymentLinks { get; }
+
+    /// <summary>Webhooks, países, bancos e emissão de OTP.</summary>
+    public PlatformResource Platform { get; }
 
     /// <summary>Executa um GET e desserializa a resposta.</summary>
     /// <param name="path">Path relativo, sem barra inicial (ex.: <c>v1/countries</c>).</param>
@@ -55,6 +81,22 @@ public sealed class KiraClient
     {
         var content = JsonContent.Create(body, options: KiraJson.Options);
         using var request = CreateRequest(HttpMethod.Post, path, context ?? KiraRequestContext.Default, content);
+        return await SendAndReadAsync<TResponse>(request, cancellationToken);
+    }
+
+    /// <summary>Executa um PATCH com corpo JSON e desserializa a resposta.</summary>
+    /// <param name="path">Path relativo, sem barra inicial.</param>
+    /// <param name="body">Campos a alterar. Só o que for enviado muda.</param>
+    /// <param name="context">Modificadores da requisição.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    public async Task<TResponse> PatchAsync<TRequest, TResponse>(
+        string path,
+        TRequest body,
+        KiraRequestContext? context = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = JsonContent.Create(body, options: KiraJson.Options);
+        using var request = CreateRequest(HttpMethod.Patch, path, context ?? KiraRequestContext.Default, content);
         return await SendAndReadAsync<TResponse>(request, cancellationToken);
     }
 

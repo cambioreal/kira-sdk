@@ -25,7 +25,11 @@ public static class KiraJson
             NumberHandling = JsonNumberHandling.AllowReadingFromString,
         };
 
-        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
+        // Deliberadamente sem um JsonStringEnumConverter global: a Kira mistura snake_case
+        // (verification_link), SCREAMING_SNAKE (INSTANT_PAY), kebab-case (usa-virtual-accounts) e
+        // PascalCase (Full) nos valores de enum. Um conversor na coleção Converters teria
+        // precedência sobre o [JsonConverter] de cada enum e uniformizaria tudo — errado.
+        // Cada enum declara seu próprio conversor. Ver EnumConverters.cs.
 
         // populateMissingResolver: true instala o resolver por reflexão. Sem ele, MakeReadOnly()
         // lança em runtime — e congelar as opções aqui evita a penalidade de warm-up a cada
