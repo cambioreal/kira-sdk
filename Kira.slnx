@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CambioReal.Kira.Client/CambioReal.Kira.Client.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CambioReal.Kira.Client.Tests/CambioReal.Kira.Client.Tests.csproj" />
+  </Folder>
+</Solution>

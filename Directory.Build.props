@@ -1,0 +1,34 @@
+<Project>
+
+  <!-- Convenções espelhadas de cambioreal/cambio-real-v3 (Directory.Build.props).
+       O consumidor primário é o v3, que é net10.0 puro e fixa a SDK em 10.0.301.
+       TargetFramework é central: os .csproj NÃO devem declará-lo. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Deterministic>true</Deterministic>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- 1591: membro público sem comentário XML. A API pública é documentada;
+         o resto do assembly não precisa carregar doc só para satisfazer o analisador. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Identidade do pacote">
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <Product>CambioReal Kira Client</Product>
+    <Company>Hideaki Serviços</Company>
+    <Authors>Hideaki Serviços</Authors>
+    <RepositoryUrl>https://github.com/cambioreal/kira-sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/cambioreal/kira-sdk</PackageProjectUrl>
+  </PropertyGroup>
+
+</Project>

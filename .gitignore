@@ -1,0 +1,29 @@
+# --- .NET ---
+bin/
+obj/
+out/
+*.user
+*.suo
+artifacts/
+.vs/
+*.nupkg
+*.snupkg
+TestResults/
+coverage*.json
+coverage*.xml
+*.trx
+
+# --- Secrets / local env (NUNCA commitar — usar pass) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+appsettings.Local.json
+appsettings.*.Local.json
+
+# --- IDE / OS ---
+.idea/
+.DS_Store
+Thumbs.db
