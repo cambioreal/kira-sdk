@@ -188,8 +188,12 @@ public sealed class KiraClient
     }
 
     /// <summary>
-    /// Extrai o código de erro do corpo. A Kira não documenta um envelope de erro único, então
-    /// tentamos os nomes de campo observados (<c>code</c>, <c>error_code</c>, <c>error</c>).
+    /// Extrai o código de erro do corpo. A Kira não documenta um envelope de erro único — a
+    /// sondagem contra o sandbox em 2026-07-13 confirmou pelo menos 6 formatos distintos, um por
+    /// família de endpoint (ver README, "Confirmado contra o sandbox"). Tentamos, em ordem:
+    /// <c>code</c>/<c>error_code</c> na raiz; depois <c>error</c> — que ora é string, ora é um
+    /// objeto <c>{"code","message","details"}</c>; e por fim <c>message</c> na raiz, para o
+    /// formato estilo FastAPI/Pydantic (<c>{"data":[...],"message":"ERROR-VXXX: ..."}</c>).
     /// </summary>
     private static string? TryExtractErrorCode(string body)
     {
@@ -201,23 +205,51 @@ public sealed class KiraClient
         try
         {
             using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
 
-            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            if (root.ValueKind != JsonValueKind.Object)
             {
                 return null;
             }
 
-            foreach (var candidate in (ReadOnlySpan<string>)["code", "error_code", "error"])
+            foreach (var candidate in (ReadOnlySpan<string>)["code", "error_code"])
             {
-                if (document.RootElement.TryGetProperty(candidate, out var value) && value.ValueKind == JsonValueKind.String)
+                if (root.TryGetProperty(candidate, out var value) && value.ValueKind == JsonValueKind.String)
                 {
                     return value.GetString();
                 }
             }
+
+            if (root.TryGetProperty("error", out var error))
+            {
+                if (error.ValueKind == JsonValueKind.String)
+                {
+                    return error.GetString();
+                }
+
+                if (error.ValueKind == JsonValueKind.Object)
+                {
+                    if (error.TryGetProperty("code", out var nestedCode) && nestedCode.ValueKind == JsonValueKind.String)
+                    {
+                        return nestedCode.GetString();
+                    }
+
+                    if (error.TryGetProperty("message", out var nestedMessage) && nestedMessage.ValueKind == JsonValueKind.String)
+                    {
+                        return nestedMessage.GetString();
+                    }
+                }
+            }
+
+            if (root.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
+            {
+                return message.GetString();
+            }
         }
         catch (JsonException)
         {
-            // Corpo não-JSON (ex.: HTML de um proxy). O status e o corpo bruto já vão na exceção.
+            // Corpo não-JSON (ex.: HTML de um proxy, ou o "error code: 522" literal que
+            // GET /banks devolve às vezes no sandbox). O status e o corpo bruto já vão na exceção.
         }
 
         return null;

@@ -144,6 +144,38 @@ public sealed class KiraClientTests
         error.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
+    /// <summary>
+    /// Confirmado contra o sandbox em 2026-07-13 (<c>GET /v1/recipients</c> com usuário
+    /// inexistente): <c>error</c> às vezes é um objeto, não uma string.
+    /// </summary>
+    [Fact]
+    public async Task NestedErrorObjectSurfacesItsCode()
+    {
+        var (client, _, _) = Build(("tok-1", HttpStatusCode.NotFound,
+            """{"error":{"code":"USER_NOT_FOUND","message":"User with ID x not found","details":{}}}"""));
+
+        var error = await Should.ThrowAsync<KiraApiException>(
+            async () => await client.GetAsync<Probe>("v1/recipients"));
+
+        error.ErrorCode.ShouldBe("USER_NOT_FOUND");
+    }
+
+    /// <summary>
+    /// Confirmado contra o sandbox em 2026-07-13 (<c>POST /webhooks/register</c>): formato de
+    /// erro estilo FastAPI/Pydantic, sem <c>code</c> nem <c>error</c> na raiz.
+    /// </summary>
+    [Fact]
+    public async Task PydanticStyleErrorFallsBackToMessage()
+    {
+        var (client, _, _) = Build(("tok-1", HttpStatusCode.BadRequest,
+            """{"data":[{"loc":"client_uuid","msg":"Field required","type":"missing"}],"message":"ERROR-V001: Validation Error"}"""));
+
+        var error = await Should.ThrowAsync<KiraApiException>(
+            async () => await client.GetAsync<Probe>("webhooks/register"));
+
+        error.ErrorCode.ShouldBe("ERROR-V001: Validation Error");
+    }
+
     [Fact]
     public async Task NonJsonErrorBodyDoesNotMaskTheStatus()
     {
