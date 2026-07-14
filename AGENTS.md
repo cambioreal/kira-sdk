@@ -66,11 +66,15 @@ Split by domain: `Common`, `Enums`, `PayIns`, `Payouts`, `Recipients`, `Referenc
 
 ### Errors
 
-`KiraApiException` (base) → `KiraAuthenticationException` (401 after retry) / `KiraIdempotencyConflictException` (409 — idempotency key reused with a different body; the fix is to reuse the original body or mint a new key, not to retry). `KiraClient.ThrowIfUnsuccessfulAsync` maps status codes to these; `TryExtractErrorCode` probes `code`/`error_code`/`error` fields since Kira doesn't document a single error envelope.
+`KiraApiException` (base) → `KiraAuthenticationException` (401 after retry) / `KiraIdempotencyConflictException` (409 — idempotency key reused with a different body; the fix is to reuse the original body or mint a new key, not to retry). `KiraClient.ThrowIfUnsuccessfulAsync` maps status codes to these; `TryExtractErrorCode` (fixed 2026-07-14) covers 3 of the ≥6 error-body shapes confirmed against the sandbox — see README.
+
+### Contracts (`src/CambioReal.Kira.Client/Contracts/`)
+
+Canonical platform response contract (`Envelope<T>`, `ProblemDetail` per RFC 9457, `Warning`, `ResponseMetadata`, `PagedMetadata`) — added 2026-07-14, see README "Contrato canônico de resposta" and `_pipeline/rfc-kira-sdk-canonical-response-envelope.md` in the vault for the full RFC. **Does not change `KiraClient`'s public surface** — it still returns `T` and throws `KiraApiException`; this is the reference implementation of the contract types for whoever consumes the SDK inside an HTTP service (starting with `cambio-real-v3`, which the audit found has no equivalent contract at all). `KiraApiException.ToProblemDetails()` is the integration point — one `ProblemDetail` per field when Kira returned a `details[]` array, one otherwise. Serializes via `EnvelopeJson.Options` (camelCase) — do not confuse with `KiraJson.Options` (snake_case, Kira's own wire format).
 
 ### Idempotency / OTP / request modifiers
 
-`KiraRequestContext` (`Http/KiraRequestContext.cs`) carries per-call modifiers: `IdempotencyKey` (required on creation POSTs — resend the same key with an identical body to get the stored response back, `409` on a differing body), `ValidationCode` (6-digit OTP for fiat payouts, header is literally `x-validation-header`), and `SkipBearerAuthentication` (only `POST /webhooks/register` needs this — it authenticates with just `x-api-key`).
+`KiraRequestContext` (`Http/KiraRequestContext.cs`) carries per-call modifiers: `IdempotencyKey` (required on creation POSTs — resend the same key with an identical body to get the stored response back, `409` on a differing body), `ValidationCode` (6-digit OTP for fiat payouts, header is literally `x-validation-header`), and `SkipBearerAuthentication` (escape hatch — confirmed 2026-07-14 that no real endpoint needs it; `POST /webhooks/register` was assumed to but actually requires Bearer like everything else).
 
 ## Non-obvious domain facts
 

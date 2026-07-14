@@ -99,6 +99,55 @@ pass show kira/sandbox-api-key
 pass show kira/webhook-secret
 ```
 
+## Contrato canônico de resposta (Response Envelope)
+
+`CambioReal.Kira.Contracts` (`src/CambioReal.Kira.Client/Contracts/`) implementa a referência do
+contrato de resposta canônico da plataforma — `Envelope<T>`, `ProblemDetail` (RFC 9457 — Problem
+Details for HTTP APIs), `Warning`, `ResponseMetadata` e `PagedMetadata`. RFC completa:
+`_pipeline/rfc-kira-sdk-canonical-response-envelope.md` no vault (auditoria de `cambio-real-v3`,
+alternativas consideradas, plano de migração).
+
+**O `KiraClient` continua devolvendo `T` e lançando `KiraApiException` em falha** — o contrato
+canônico não muda a superfície pública do SDK. Bibliotecas cliente .NET usam exceções, não
+`Result<T>`/`Envelope<T>`, como retorno (convenção estabelecida, Microsoft REST API Guidelines);
+forçar `Envelope<T>` aqui seria adotar idioma de servidor HTTP dentro de um cliente, quebrando os
+103 testes existentes e a lógica de retry/single-flight de token já embutida em
+`KiraAuthenticationHandler`, sem necessidade real — o gap que motivou este contrato (achado da
+auditoria) é inteiramente do lado do *servidor* `cambio-real-v3`, não deste SDK.
+
+O que existe aqui é a peça reutilizável: `KiraApiException.ToProblemDetails()` traduz qualquer
+exceção do SDK em um ou mais `ProblemDetail`, prontos para compor o `Envelope<T>` de saída de
+quem consumir o kira-sdk dentro de um serviço HTTP.
+
+```csharp
+try
+{
+    await kira.PayIns.CreateAsync(request);
+}
+catch (KiraApiException ex)
+{
+    // Um ProblemDetail por campo quando a Kira devolveu {"details":[{"path","message","code"}]}
+    // (confirmado contra o sandbox — ver seção abaixo); um único ProblemDetail caso contrário.
+    var envelope = Envelope.Fail<PayInResult>(ex.ToProblemDetails(), "PAYIN_CREATE_FAILED", "Falha ao criar o PayIn.");
+    return Results.Json(envelope, EnvelopeJson.Options, statusCode: envelope.Errors[0].Status);
+}
+```
+
+`Retryable` e `Severity` são computados a partir do `HttpStatusCode` da exceção (429/502/503/504/500
+→ `Retryable=true`; `>=500` → `Severity.Critical`) — o chamador não precisa declarar nada.
+Serialização usa `EnvelopeJson.Options` (`Serialization/EnvelopeJson.cs`), **camelCase**,
+deliberadamente separado de `KiraJson.Options` (snake_case — o formato de fio *da Kira*, não o
+nosso contrato de saída).
+
+**Nota de portabilidade para `cambio-real-v3`**: portar este padrão para um servidor ASP.NET Core
+real exige, além de reusar estes tipos: (1) `Envelope<T>` como corpo de toda resposta de
+controller/endpoint, não mais DTO nu; (2) um `IExceptionHandler` global — a auditoria confirmou
+que **não existe hoje** nenhum handler global de exceção em cambio-real-v3, então falhas
+inesperadas não geram envelope nenhum; (3) `ResponseMetadata` populado a partir do `HttpContext`/
+`Activity` do OpenTelemetry (trace/span já existem na infra, só não chegam à resposta); (4)
+substituir as duas formas de paginação hoje incompatíveis (`CursorPage`/`PagedResult`) por
+`PagedMetadata` único, isolado de `Data`.
+
 ## Contradições conhecidas na documentação da Kira
 
 Encontradas ao ler a documentação em 2026-07-09. Nenhuma foi resolvida contra o sandbox ainda; até lá, tratar como risco.
