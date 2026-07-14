@@ -55,13 +55,18 @@ public sealed class KiraClientTests
         request.Body.ShouldContain("\"business_legal_name\"");
     }
 
+    /// <summary>
+    /// Mecanismo genérico do <see cref="KiraRequestContext.SkipBearerAuthentication"/> — não é
+    /// mais usado por <c>webhooks/register</c> (confirmado que exige Bearer contra o sandbox em
+    /// 2026-07-14), mas o escape hatch em si continua correto para um endpoint ainda não descoberto.
+    /// </summary>
     [Fact]
     public async Task SkipBearerSendsOnlyApiKey()
     {
         var (client, transport, _) = Build(("tok-1", HttpStatusCode.OK, """{"id":"w-1"}"""));
 
         await client.PostAsync<CreateProbe, Probe>(
-            "webhooks/register",
+            "some/endpoint-without-bearer",
             new CreateProbe("Acme"),
             new KiraRequestContext { SkipBearerAuthentication = true });
 

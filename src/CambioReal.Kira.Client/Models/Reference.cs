@@ -110,12 +110,28 @@ public sealed record KiraPaymentLink : KiraResponse
 }
 
 /// <summary>
-/// Corpo de <c>POST /webhooks/register</c>. Autentica só com <c>x-api-key</c>.
+/// Corpo de <c>POST /webhooks/register</c>.
 /// </summary>
+/// <remarks>
+/// <b>Reescrito em 2026-07-14</b> a partir de um registro real bem-sucedido contra o sandbox
+/// (<c>200</c>). A doc e o código diziam que este endpoint autentica só com <c>x-api-key</c>
+/// (sem Bearer) — errado: sem Bearer, a API devolve <c>401</c> disfarçado de "rota não
+/// corresponde". Ver <see cref="Resources.PlatformResource.RegisterWebhookAsync"/>, que não usa
+/// mais <c>SkipBearerAuthentication</c>. O campo da URL também tinha o nome errado.
+/// </remarks>
 public sealed record RegisterWebhookRequest
 {
-    /// <summary>Endpoint que receberá os eventos. Precisa ser HTTPS.</summary>
-    public required Uri Url { get; init; }
+    /// <summary>
+    /// Identificador do seu client Kira (o mesmo <see cref="KiraOptions.ClientId"/> usado para
+    /// autenticar). Confirmado obrigatório contra o sandbox em 2026-07-14.
+    /// </summary>
+    public required string ClientUuid { get; init; }
+
+    /// <summary>
+    /// Endpoint que receberá os eventos. Precisa ser HTTPS. Campo real é <c>webhook_url</c>, não
+    /// <c>url</c> — confirmado contra o sandbox em 2026-07-14.
+    /// </summary>
+    public required Uri WebhookUrl { get; init; }
 
     /// <summary>
     /// Segredo usado para assinar os eventos em HMAC SHA-256. Fortemente recomendado.
@@ -124,14 +140,18 @@ public sealed record RegisterWebhookRequest
     public string? SecretKey { get; init; }
 }
 
-/// <summary>Webhook registrado.</summary>
+/// <summary>
+/// Confirmação de registro do webhook.
+/// </summary>
+/// <remarks>
+/// Confirmado contra o sandbox em 2026-07-14: a resposta de um registro bem-sucedido é só
+/// <c>{"message": "Webhook registered successfully"}</c> — sem identificador, sem eco da URL.
+/// Consistente com a doc: não existe endpoint para listar ou remover webhooks depois.
+/// </remarks>
 public sealed record KiraWebhookRegistration : KiraResponse
 {
-    /// <summary>Identificador do registro.</summary>
-    public string Id { get; init; } = string.Empty;
-
-    /// <summary>Endpoint registrado.</summary>
-    public Uri? Url { get; init; }
+    /// <summary>Mensagem de confirmação.</summary>
+    public string? Message { get; init; }
 }
 
 /// <summary>Subdivisão (estado ou província) de um país.</summary>

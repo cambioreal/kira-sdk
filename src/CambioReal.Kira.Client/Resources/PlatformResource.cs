@@ -72,8 +72,11 @@ public sealed class PlatformResource
     /// Registra a URL que receberá os eventos. <c>POST /webhooks/register</c>.
     /// </summary>
     /// <remarks>
-    /// Único endpoint que autentica <b>só</b> com <c>x-api-key</c>, sem JWT. A URL precisa ser HTTPS.
-    /// Guarde o <see cref="RegisterWebhookRequest.SecretKey"/> no <c>pass</c>: sem ele, não há como
+    /// Confirmado contra o sandbox em 2026-07-14 (registro real bem-sucedido, <c>200</c>): este
+    /// endpoint <b>exige Bearer</b>, ao contrário do que a doc e versões anteriores deste SDK
+    /// assumiam — sem o token, a Kira devolve <c>401</c> disfarçado de "rota não corresponde"
+    /// (mensagem enganosa de roteamento). A URL precisa ser HTTPS. Guarde o
+    /// <see cref="RegisterWebhookRequest.SecretKey"/> no <c>pass</c>: sem ele, não há como
     /// distinguir um evento da Kira de um POST forjado.
     /// <para>
     /// Não há endpoint documentado para listar ou remover webhooks.
@@ -85,8 +88,7 @@ public sealed class PlatformResource
         client.PostAsync<RegisterWebhookRequest, KiraWebhookRegistration>(
             KiraPaths.WebhooksRegister,
             request,
-            new KiraRequestContext { SkipBearerAuthentication = true },
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
     /// <summary>
     /// Emite o OTP de 6 dígitos usado em payouts fiat. <c>POST /verification/send</c>.

@@ -18,8 +18,14 @@ public sealed record KiraRequestContext
 
     /// <summary>
     /// Envia apenas <c>x-api-key</c>, sem <c>Authorization: Bearer</c>.
-    /// O registro de webhook (<c>POST /webhooks/register</c>) é o único endpoint documentado que dispensa JWT.
     /// </summary>
+    /// <remarks>
+    /// A doc descrevia <c>POST /webhooks/register</c> como o único endpoint que dispensa o JWT —
+    /// confirmado <b>errado</b> contra o sandbox em 2026-07-14 (esse endpoint exige Bearer;
+    /// ver <see cref="Resources.PlatformResource.RegisterWebhookAsync"/>). Nenhum endpoint
+    /// confirmado usa esta opção hoje; mantida como escape hatch para um caso ainda não
+    /// descoberto.
+    /// </remarks>
     public bool SkipBearerAuthentication { get; init; }
 
     /// <summary>Contexto com uma chave de idempotência recém-gerada.</summary>

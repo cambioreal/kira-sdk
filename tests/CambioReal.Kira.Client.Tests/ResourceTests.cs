@@ -185,21 +185,32 @@ public sealed class ResourceTests
         request.IdempotencyKey.ShouldBeNull(); // preview não cria nada
     }
 
+    /// <summary>
+    /// Confirmado contra o sandbox em 2026-07-14 (registro real bem-sucedido): este endpoint
+    /// <b>exige</b> Bearer — a doc e o código anteriores assumiam o contrário. Campo real da URL é
+    /// <c>webhook_url</c>, não <c>url</c>, e <c>client_uuid</c> é obrigatório.
+    /// </summary>
     [Fact]
-    public async Task RegisterWebhookSkipsTheBearerToken()
+    public async Task RegisterWebhookRequiresTheBearerToken()
     {
-        var (client, transport) = TestClient.Create((HttpStatusCode.Created, """{"id":"wh-1"}"""));
+        var (client, transport) = TestClient.Create((HttpStatusCode.OK, """{"message":"Webhook registered successfully"}"""));
 
-        await client.Platform.RegisterWebhookAsync(new RegisterWebhookRequest
+        var registration = await client.Platform.RegisterWebhookAsync(new RegisterWebhookRequest
         {
-            Url = new Uri("https://cambioreal.example/webhooks/kira"),
+            ClientUuid = "c-1",
+            WebhookUrl = new Uri("https://cambioreal.example/webhooks/kira"),
             SecretKey = "whsec_x",
         });
+
+        registration.Message.ShouldBe("Webhook registered successfully");
 
         var request = transport.Requests.Single();
         request.RequestUri!.ToString().ShouldBe(Root + "webhooks/register");
         request.ApiKey.ShouldBe("api-key");
-        request.Authorization.ShouldBeNull();
+        request.Authorization.ShouldNotBeNull();
+        request.Body.ShouldNotBeNull();
+        request.Body.ShouldContain("\"webhook_url\":\"https://cambioreal.example/webhooks/kira\"");
+        request.Body.ShouldContain("\"client_uuid\":\"c-1\"");
     }
 
     [Fact]
