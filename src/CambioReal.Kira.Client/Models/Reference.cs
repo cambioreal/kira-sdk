@@ -83,7 +83,11 @@ public sealed record CountrySubdivision : KiraResponse
 /// <summary>País suportado para endereços de usuário.</summary>
 public sealed record KiraCountry : KiraResponse
 {
-    /// <summary>Código ISO 3166-1.</summary>
+    /// <summary>
+    /// Código ISO 3166-1 alpha-3. Confirmado contra o sandbox em 2026-07-13: o campo real se
+    /// chama <c>alpha3</c>, não <c>code</c> — sem o mapeamento explícito, este campo vinha sempre vazio.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("alpha3")]
     public string Code { get; init; } = string.Empty;
 
     /// <summary>Nome do país.</summary>
@@ -92,6 +96,12 @@ public sealed record KiraCountry : KiraResponse
     /// <summary>Estados ou províncias.</summary>
     public IReadOnlyList<CountrySubdivision> Subdivisions { get; init; } = [];
 }
+
+/// <summary>
+/// Envelope real de <c>GET /v1/countries</c>: <c>{"count": N, "data": [...]}</c>.
+/// </summary>
+/// <remarks>Confirmado contra o sandbox em 2026-07-13 — a lista não vem como array na raiz.</remarks>
+internal sealed record KiraCountriesEnvelope(int? Count, IReadOnlyList<KiraCountry> Data);
 
 /// <summary>Banco disponível para operações de pagamento em um país.</summary>
 public sealed record KiraBank : KiraResponse

@@ -104,8 +104,11 @@ public sealed class PlatformResource
             cancellationToken: cancellationToken);
 
     /// <summary>Países suportados e suas subdivisões. <c>GET /v1/countries</c>.</summary>
-    public Task<IReadOnlyList<KiraCountry>> ListCountriesAsync(CancellationToken cancellationToken = default) =>
-        client.GetAsync<IReadOnlyList<KiraCountry>>(KiraPaths.Countries, cancellationToken: cancellationToken);
+    public async Task<IReadOnlyList<KiraCountry>> ListCountriesAsync(CancellationToken cancellationToken = default)
+    {
+        var envelope = await client.GetAsync<KiraCountriesEnvelope>(KiraPaths.Countries, cancellationToken: cancellationToken);
+        return envelope.Data;
+    }
 
     /// <summary>
     /// Bancos de um país. <c>GET /banks?country=</c>.

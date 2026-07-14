@@ -269,12 +269,12 @@ public sealed class ResourceCoverageTests
     public async Task ListCountriesReadsSubdivisions()
     {
         var (client, transport) = TestClient.CreateOk(
-            """[{"code":"BR","name":"Brazil","subdivisions":[{"code":"SP","name":"Sao Paulo"}]}]""");
+            """{"count":1,"data":[{"alpha3":"BRA","name":"Brazil","subdivisions":[{"code":"SP","name":"Sao Paulo"}]}]}""");
 
         var countries = await client.Platform.ListCountriesAsync();
 
         var brazil = countries.Single();
-        brazil.Code.ShouldBe("BR");
+        brazil.Code.ShouldBe("BRA");
         brazil.Subdivisions.Single().Code.ShouldBe("SP");
 
         transport.Requests.Single().RequestUri!.ToString().ShouldBe(Root + "v1/countries");
