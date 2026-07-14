@@ -110,7 +110,8 @@ public sealed class ResourceCoverageTests
     [Fact]
     public async Task ListVirtualAccountsEncodesEnumFilters()
     {
-        var (client, transport) = TestClient.CreateOk("""{"data":[{"id":"va-1"}],"total":1}""");
+        var (client, transport) = TestClient.CreateOk(
+            """{"data":[{"id":"va-1"}],"pagination":{"total":1,"limit":10,"offset":0,"has_more":false}}""");
 
         var page = await client.VirtualAccounts.ListAsync(new ListVirtualAccountsRequest
         {
@@ -120,7 +121,8 @@ public sealed class ResourceCoverageTests
         });
 
         page.Data.Count.ShouldBe(1);
-        page.Total.ShouldBe(1);
+        page.Pagination!.Total.ShouldBe(1);
+        page.Pagination.HasMore.ShouldBe(false);
 
         // AbsoluteUri, não ToString(): ToString() devolve a forma de exibição e desfaz o %20
         // (embora preserve o %2F, para não alterar a semântica do path). O que trafega é o escapado.

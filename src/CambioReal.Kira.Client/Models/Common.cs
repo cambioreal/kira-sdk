@@ -28,19 +28,40 @@ public abstract record KiraResponse
 
 /// <summary>Página de uma coleção.</summary>
 /// <typeparam name="T">Tipo do item.</typeparam>
+/// <remarks>
+/// Confirmado contra o sandbox em 2026-07-13 (<c>GET /v1/users</c>, <c>GET /v1/virtual-accounts</c>):
+/// a resposta é <c>{"data": [...], "pagination": {total, limit, offset, has_more}}</c> — não os
+/// campos <c>total</c>/<c>page</c>/<c>limit</c> soltos na raiz que esta versão assumia antes.
+/// </remarks>
 public sealed record KiraPage<T> : KiraResponse
 {
     /// <summary>Itens da página.</summary>
     public IReadOnlyList<T> Data { get; init; } = [];
 
-    /// <summary>Total de itens, quando a Kira o informa.</summary>
-    public int? Total { get; init; }
+    /// <summary>Metadados de paginação, quando a Kira os informa.</summary>
+    public KiraPagination? Pagination { get; init; }
+}
 
-    /// <summary>Página atual.</summary>
-    public int? Page { get; init; }
+/// <summary>Metadados de paginação de uma <see cref="KiraPage{T}"/>.</summary>
+/// <remarks>
+/// Paginação por <b>offset</b>, não por número de página — apesar do parâmetro de query se
+/// chamar <c>page</c> nos filtros de listagem (<see cref="KiraPageRequest"/> e afins). Não
+/// confirmado ainda se o parâmetro de request <c>page</c> é aceito como está ou se a Kira
+/// espera <c>offset</c> — só o formato da resposta foi sondado contra o sandbox.
+/// </remarks>
+public sealed record KiraPagination : KiraResponse
+{
+    /// <summary>Total de itens na coleção.</summary>
+    public int? Total { get; init; }
 
     /// <summary>Tamanho da página.</summary>
     public int? Limit { get; init; }
+
+    /// <summary>Deslocamento do primeiro item desta página.</summary>
+    public int? Offset { get; init; }
+
+    /// <summary>Se há mais itens além desta página.</summary>
+    public bool? HasMore { get; init; }
 }
 
 /// <summary>Paginação e ordenação comuns aos endpoints de listagem.</summary>
