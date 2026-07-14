@@ -31,24 +31,36 @@ public sealed class ResourceCoverageTests
         request.Body.ShouldContain("\"redirect_uri\":\"https://app.example/done\"");
     }
 
+    /// <summary>
+    /// Formato real confirmado contra o sandbox em 2026-07-14 (criado e verificado ponta a
+    /// ponta): os dados da conta vão aninhados em <c>account</c>, com <c>address</c>/<c>network</c>/
+    /// <c>token</c> sem o prefixo <c>wallet_</c>; e a resposta usa <c>recipient_id</c> +
+    /// <c>account_details</c>, não <c>id</c> + campos flat.
+    /// </summary>
     [Fact]
     public async Task CreateWalletRecipientSerializesNetworkAndToken()
     {
         var (client, transport) = TestClient.Create((HttpStatusCode.Created,
-            """{"id":"r-1","account_type":"WALLET","wallet_network":"solana","wallet_token":"USDT"}"""));
+            """{"recipient_id":"r-1","account_type":"WALLET","account_details":{"network":"solana","token":"USDT"}}"""));
 
         var recipient = await client.Recipients.CreateAsync(new CreateRecipientRequest
         {
             UserId = "u-1",
-            AccountType = AccountType.Wallet,
-            WalletAddress = "So1anaAddr",
-            WalletNetwork = WalletNetwork.Solana,
-            WalletToken = WalletToken.Usdt,
+            FirstName = "Kira",
+            LastName = "Recipient",
+            Account = new RecipientAccount
+            {
+                AccountType = AccountType.Wallet,
+                Address = "So1anaAddr",
+                Network = WalletNetwork.Solana,
+                Token = WalletToken.Usdt,
+            },
         });
 
+        recipient.Id.ShouldBe("r-1");
         recipient.AccountType.ShouldBe(AccountType.Wallet);
-        recipient.WalletNetwork.ShouldBe(WalletNetwork.Solana);
-        recipient.WalletToken.ShouldBe(WalletToken.Usdt);
+        recipient.AccountDetails!.Network.ShouldBe(WalletNetwork.Solana);
+        recipient.AccountDetails.Token.ShouldBe(WalletToken.Usdt);
 
         var request = transport.Requests.Single();
         request.RequestUri!.ToString().ShouldBe(Root + "v1/recipients");
@@ -57,52 +69,70 @@ public sealed class ResourceCoverageTests
 
         // Três convenções de casing no mesmo corpo.
         request.Body.ShouldContain("\"account_type\":\"WALLET\"");
-        request.Body.ShouldContain("\"wallet_network\":\"solana\"");
-        request.Body.ShouldContain("\"wallet_token\":\"USDT\"");
+        request.Body.ShouldContain("\"network\":\"solana\"");
+        request.Body.ShouldContain("\"token\":\"USDT\"");
     }
 
+    /// <summary>
+    /// Campos obrigatórios de SWIFT confirmados contra o sandbox em 2026-07-14:
+    /// <c>account_number</c>, <c>swift_code</c>, <c>bank_name</c>, <c>bank_address</c> — este
+    /// último não existia no modelo anterior.
+    /// </summary>
     [Fact]
     public async Task CreateSwiftRecipientOmitsOptionalContactFields()
     {
-        var (client, transport) = TestClient.Create((HttpStatusCode.Created, """{"id":"r-2","account_type":"SWIFT"}"""));
+        var (client, transport) = TestClient.Create((HttpStatusCode.Created, """{"recipient_id":"r-2","account_type":"SWIFT"}"""));
 
         await client.Recipients.CreateAsync(new CreateRecipientRequest
         {
             UserId = "u-1",
-            AccountType = AccountType.Swift,
-            AccountHolderName = "Acme Ltd",
-            SwiftCode = "DEUTDEFF",
-            Iban = "DE89370400440532013000",
+            CompanyName = "Acme Ltd",
+            Account = new RecipientAccount
+            {
+                AccountType = AccountType.Swift,
+                AccountNumber = "0001234567",
+                SwiftCode = "DEUTDEFF",
+                BankName = "Deutsche Bank",
+                BankAddress = "Taunusanlage 12, Frankfurt",
+                Iban = "DE89370400440532013000",
+            },
         });
 
         var body = transport.Requests.Single().Body;
         body.ShouldNotBeNull();
         body.ShouldContain("\"swift_code\":\"DEUTDEFF\"");
+        body.ShouldContain("\"company_name\":\"Acme Ltd\"");
 
-        // Opcionais desde 2026-04-14; não devem ir como null.
+        // Opcionais; não devem ir como null.
         body.ShouldNotContain("email");
         body.ShouldNotContain("phone");
-        body.ShouldNotContain("address_street");
     }
 
+    /// <summary>
+    /// Envelope real confirmado contra o sandbox em 2026-07-14: <c>{"recipients": [...], "total": N}</c>
+    /// — nem array solto na raiz, nem o envelope <c>{data, pagination}</c> de outras listagens.
+    /// </summary>
     [Fact]
     public async Task ListRecipientsByUserFiltersByQuery()
     {
-        var (client, transport) = TestClient.CreateOk("""[{"id":"r-1"},{"id":"r-2"}]""");
+        var (client, transport) = TestClient.CreateOk(
+            """{"recipients":[{"recipient_id":"r-1"},{"recipient_id":"r-2"}],"total":2}""");
 
         var recipients = await client.Recipients.ListByUserAsync("u-1");
 
         recipients.Count.ShouldBe(2);
+        recipients[0].Id.ShouldBe("r-1");
         transport.Requests.Single().RequestUri!.ToString().ShouldBe(Root + "v1/recipients?user_id=u-1");
     }
 
     [Fact]
     public async Task GetRecipientUsesThePathSegment()
     {
-        var (client, transport) = TestClient.CreateOk("""{"id":"r-1","account_type":"ACH"}""");
+        var (client, transport) = TestClient.CreateOk("""{"recipient_id":"r-1","account_type":"ACH"}""");
 
         var recipient = await client.Recipients.GetAsync("r-1");
 
+        recipient.Id.ShouldBe("r-1");
         recipient.AccountType.ShouldBe(AccountType.Ach);
         transport.Requests.Single().RequestUri!.ToString().ShouldBe(Root + "v1/recipients/r-1");
     }

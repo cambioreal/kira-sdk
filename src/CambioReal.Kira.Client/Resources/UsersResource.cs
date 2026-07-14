@@ -118,13 +118,17 @@ public sealed class RecipientsResource
             cancellationToken);
 
     /// <summary>Lista os recipients de um usuário. <c>GET /v1/recipients?user_id=</c>.</summary>
-    /// <remarks>A doc não declara o nome do parâmetro de query; <c>user_id</c> é inferido.</remarks>
-    public Task<IReadOnlyList<KiraRecipient>> ListByUserAsync(
+    /// <remarks>
+    /// A doc não declara o nome do parâmetro de query; <c>user_id</c> é inferido. Confirmado
+    /// contra o sandbox em 2026-07-14: a resposta é <c>{"recipients": [...], "total": N}</c>.
+    /// </remarks>
+    public async Task<IReadOnlyList<KiraRecipient>> ListByUserAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
         var path = QueryString.Append(KiraPaths.Recipients, ("user_id", userId));
-        return client.GetAsync<IReadOnlyList<KiraRecipient>>(path, cancellationToken: cancellationToken);
+        var envelope = await client.GetAsync<KiraRecipientsEnvelope>(path, cancellationToken: cancellationToken);
+        return envelope.Recipients;
     }
 
     /// <summary>Busca um recipient. <c>GET /v1/recipients/{id}</c>.</summary>

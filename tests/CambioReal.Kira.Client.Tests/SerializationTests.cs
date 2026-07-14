@@ -89,6 +89,22 @@ public sealed class SerializationTests
         json.ShouldContain("\"amount\":\"1000.50\"");
     }
 
+    /// <summary>
+    /// Formato real de timestamp em <c>KiraRecipient</c>, confirmado contra o sandbox em
+    /// 2026-07-14: espaço em vez de <c>T</c>, offset de 2 dígitos sem separador de minutos. O
+    /// conversor padrão de <see cref="DateTimeOffset"/> rejeita essa forma.
+    /// </summary>
+    [Fact]
+    public void RecipientTimestampParsesTheNonStandardKiraFormat()
+    {
+        var json = """{"recipient_id":"r-1","created_ts":"2026-07-14 01:29:21.851995+00"}""";
+
+        var recipient = JsonSerializer.Deserialize<KiraRecipient>(json, KiraJson.Options);
+
+        recipient.ShouldNotBeNull();
+        recipient.CreatedAt.ShouldBe(new DateTimeOffset(2026, 7, 14, 1, 29, 21, 851, TimeSpan.Zero).AddTicks(9950));
+    }
+
     /// <summary>E é lido tanto de string quanto de número.</summary>
     [Theory]
     [InlineData("""{"amount":"1000.50","currency":"USD"}""")]
