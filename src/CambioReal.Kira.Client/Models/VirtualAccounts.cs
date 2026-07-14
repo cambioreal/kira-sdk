@@ -19,22 +19,42 @@ public sealed record CryptoDestination
 /// Corpo de <c>POST /v1/users/{id}/virtual-accounts</c>. Exige chave de idempotência.
 /// </summary>
 /// <remarks>
-/// Informar <see cref="Destination"/> cria a conta em modo cripto (depósitos são convertidos em
-/// stablecoin); omiti-lo cria em modo fiat (mantém saldo em USD). <b>O modo é imutável.</b>
+/// <b>Reescrito em 2026-07-14</b> a partir de erros de validação reais do sandbox — não foi
+/// possível chegar a um <c>201</c> completo (o usuário de teste não reúne KYC suficiente para
+/// virar "customer" do provedor: <c>"Customer not found... A customer is required for US_ACH
+/// accounts."</c>), mas o formato do corpo em si está confirmado: <see cref="Type"/> e
+/// <see cref="Destination"/> são <b>obrigatórios</b>, contra a suposição anterior de que
+/// omitir o destino bastava para o modo fiat. Não confirmado: a forma de <see cref="Destination"/>
+/// para os tipos que não são um destino cripto (ex.: se <c>MX_SPEI</c>/<c>EU_SEPA</c> aceitam um
+/// IBAN/CLABE em <see cref="VirtualAccountDestination.Address"/> em vez de um endereço de
+/// carteira) — só foi testado com um destino de carteira Solana/USDC contra <see cref="VirtualAccountType.UsAch"/>.
 /// </remarks>
 public sealed record CreateVirtualAccountRequest
 {
+    /// <summary>
+    /// Tipo/rail da conta. Confirmado obrigatório contra o sandbox em 2026-07-14 — substitui a
+    /// suposição anterior de string livre (<c>US_BANK</c> não é aceito).
+    /// </summary>
+    public required VirtualAccountType Type { get; init; }
+
+    /// <summary>
+    /// Destino dos depósitos. Confirmado obrigatório contra o sandbox em 2026-07-14, inclusive
+    /// para <see cref="VirtualAccountType.UsAch"/> — contradiz a doc em prosa, que descrevia isto
+    /// como opcional/exclusivo do modo cripto.
+    /// </summary>
+    public required VirtualAccountDestination Destination { get; init; }
+
     /// <summary>
     /// Banco que provisiona a conta. <see cref="VirtualAccountProvider.SlovakSavingsBank"/> só
     /// existe em sandbox — que, por sua vez, só oferece esse provedor.
     /// </summary>
     public VirtualAccountProvider? Provider { get; init; }
 
-    /// <summary>Modo. Redundante com a presença de <see cref="Destination"/>; a Kira valida a coerência.</summary>
+    /// <summary>
+    /// Modo. Não confirmado se ainda é aceito/relevante junto de <see cref="Type"/> — mantido por
+    /// não ter sido testado como campo desconhecido/rejeitado.
+    /// </summary>
     public VirtualAccountMode? Mode { get; init; }
-
-    /// <summary>Carteira de destino. Presente ⇒ modo cripto.</summary>
-    public CryptoDestination? Destination { get; init; }
 
     /// <summary>Markup do cliente sobre a conversão, em pontos percentuais.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
@@ -42,6 +62,29 @@ public sealed record CreateVirtualAccountRequest
 
     /// <summary>Descrição livre.</summary>
     public string? Description { get; init; }
+}
+
+/// <summary>
+/// Destino dos depósitos de uma conta virtual, exigido em <see cref="CreateVirtualAccountRequest"/>.
+/// </summary>
+/// <remarks>
+/// Confirmado contra o sandbox em 2026-07-14 via erro de validação: os campos são
+/// <c>currency</c>/<c>network</c>/<c>address</c> — não <c>token</c>/<c>network</c>/<c>address</c>
+/// como em <see cref="CryptoDestination"/> (usado em endereços de liquidação e payouts cripto,
+/// não alterado aqui por não ter sido sondado contra este endpoint especificamente). Testado com
+/// sucesso na camada de schema (passou da validação de formato para uma regra de negócio) usando
+/// <c>currency=USDC</c>.
+/// </remarks>
+public sealed record VirtualAccountDestination
+{
+    /// <summary>Moeda/stablecoin do destino.</summary>
+    public required Currency Currency { get; init; }
+
+    /// <summary>Blockchain do destino.</summary>
+    public required WalletNetwork Network { get; init; }
+
+    /// <summary>Endereço do destino.</summary>
+    public required string Address { get; init; }
 }
 
 /// <summary>Instruções para depositar em uma conta virtual.</summary>

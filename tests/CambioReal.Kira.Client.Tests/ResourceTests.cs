@@ -79,6 +79,11 @@ public sealed class ResourceTests
         transport.Requests.Single().RequestUri!.ToString().ShouldBe(Root + "v1/users/u%2F..%2Fadmin");
     }
 
+    /// <summary>
+    /// Confirmado contra o sandbox em 2026-07-14 (via erro de validação): <c>type</c> e
+    /// <c>destination</c> são obrigatórios, com <c>destination</c> usando <c>currency</c>, não
+    /// <c>token</c>.
+    /// </summary>
     [Fact]
     public async Task CreateVirtualAccountPostsUnderTheUser()
     {
@@ -86,7 +91,17 @@ public sealed class ResourceTests
 
         var account = await client.VirtualAccounts.CreateAsync(
             "u-1",
-            new CreateVirtualAccountRequest { Provider = VirtualAccountProvider.SlovakSavingsBank });
+            new CreateVirtualAccountRequest
+            {
+                Type = VirtualAccountType.UsAch,
+                Destination = new VirtualAccountDestination
+                {
+                    Currency = Currency.Usdc,
+                    Network = WalletNetwork.Solana,
+                    Address = "So11111111111111111111111111111111111111112",
+                },
+                Provider = VirtualAccountProvider.SlovakSavingsBank,
+            });
 
         account.Status.ShouldBe(VirtualAccountStatus.Activating);
         account.Mode.ShouldBe(VirtualAccountMode.Fiat);
@@ -94,6 +109,8 @@ public sealed class ResourceTests
         var request = transport.Requests.Single();
         request.RequestUri!.ToString().ShouldBe(Root + "v1/users/u-1/virtual-accounts");
         request.Body.ShouldNotBeNull();
+        request.Body.ShouldContain("\"type\":\"US_ACH\"");
+        request.Body.ShouldContain("\"currency\":\"USDC\"");
         request.Body.ShouldContain("\"provider\":\"slovak_savings_bank\"");
     }
 

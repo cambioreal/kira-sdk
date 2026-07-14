@@ -88,15 +88,45 @@ public enum VirtualAccountProvider
     SlovakSavingsBank,
 }
 
-/// <summary>Modo da conta virtual. Definido na criação e imutável depois.</summary>
+/// <summary>
+/// Modo da conta virtual. Definido na criação e imutável depois.
+/// </summary>
+/// <remarks>
+/// A doc em prosa descrevia isto como o discriminador de <c>destination</c> (presente ⇒ cripto).
+/// Confirmado contra o sandbox em 2026-07-14 que isso está incompleto: <c>POST</c> exige um
+/// campo <c>type</c> próprio (ver <see cref="VirtualAccountType"/>) e <c>destination</c> é
+/// obrigatório mesmo para o tipo fiat testado (<see cref="VirtualAccountType.UsAch"/>) — não
+/// confirmado se <c>mode</c> ainda é aceito/relevante no corpo real.
+/// </remarks>
 [JsonConverter(typeof(SnakeCaseLowerEnumConverter<VirtualAccountMode>))]
 public enum VirtualAccountMode
 {
-    /// <summary>Mantém saldo em USD. Criada sem <c>destination</c>.</summary>
+    /// <summary>Mantém saldo em USD.</summary>
     Fiat,
 
-    /// <summary>Converte depósitos em USDC/USDT e envia para uma carteira. Criada com <c>destination</c>.</summary>
+    /// <summary>Converte depósitos em USDC/USDT e envia para uma carteira.</summary>
     Crypto,
+}
+
+/// <summary>
+/// Tipo/rail de uma conta virtual, exigido em <c>POST /v1/users/{id}/virtual-accounts</c>.
+/// </summary>
+/// <remarks>
+/// Confirmado contra o sandbox em 2026-07-14 via erro de validação (<c>Invalid enum value.
+/// Expected 'US_ACH' | 'MX_SPEI' | 'EU_SEPA'</c>) — substitui a suposição anterior de que este
+/// campo era uma string livre tipo <c>US_BANK</c> (não é um valor aceito).
+/// </remarks>
+[JsonConverter(typeof(UpperSnakeCaseEnumConverter<VirtualAccountType>))]
+public enum VirtualAccountType
+{
+    /// <summary>Conta ACH nos EUA.</summary>
+    UsAch,
+
+    /// <summary>Conta SPEI no México.</summary>
+    MxSpei,
+
+    /// <summary>Conta SEPA na União Europeia.</summary>
+    EuSepa,
 }
 
 /// <summary>Ciclo de vida da conta virtual.</summary>
