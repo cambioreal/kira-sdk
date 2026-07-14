@@ -65,6 +65,13 @@ public enum KiraProduct
 
     /// <summary>Provedor Austin Capital Trust. Sem fotos na criação; exige imigração, emprego e histórico bancário.</summary>
     UsaVirtualAccountsAct,
+
+    /// <summary>
+    /// Provedor Zenus. Não documentado — observado em <c>POST /v1/users</c> contra o sandbox em
+    /// 2026-07-13, ao lado dos outros dois. Não modelado em <see cref="KiraEligibleProduct"/>
+    /// (que usa <see cref="string"/> para tolerar produtos futuros sem quebrar a desserialização).
+    /// </summary>
+    UsaVirtualAccountsZenus,
 }
 
 /// <summary>Banco que provisiona a conta virtual.</summary>

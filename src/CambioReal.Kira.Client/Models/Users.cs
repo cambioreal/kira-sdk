@@ -230,19 +230,66 @@ public record KiraUser : KiraResponse
     public string? Phone { get; init; }
 
     /// <summary>
-    /// Produtos para os quais o usuário já reúne todos os campos exigidos.
-    /// Elegibilidade não é um booleano: é um conjunto, por produto.
+    /// Avaliação de elegibilidade por produto. Elegibilidade não é um booleano: é um conjunto,
+    /// por produto — cada elemento traz o seu próprio <see cref="KiraEligibleProduct.Eligible"/>
+    /// e <see cref="KiraEligibleProduct.MissingFields"/>.
     /// </summary>
-    public IReadOnlyList<KiraProduct> EligibleProducts { get; init; } = [];
+    /// <remarks>
+    /// Confirmado contra o sandbox em 2026-07-13 (<c>POST /v1/users</c>): o campo real é uma
+    /// lista de objetos ricos, não a lista de enum <see cref="KiraProduct"/> que esta versão
+    /// assumia antes.
+    /// </remarks>
+    public IReadOnlyList<KiraEligibleProduct> EligibleProducts { get; init; } = [];
 
-    /// <summary>Campos de KYC/KYB ainda faltantes.</summary>
-    public IReadOnlyList<string> MissingFields { get; init; } = [];
+    /// <summary>
+    /// Campos de KYC/KYB ainda faltantes, por produto — chave <c>"general"</c> para exigências
+    /// não específicas de um produto.
+    /// </summary>
+    /// <remarks>
+    /// Confirmado contra o sandbox em 2026-07-13: <b>ausente</b> na resposta de
+    /// <c>POST /v1/users</c> (onde os campos faltantes só existem dentro de cada
+    /// <see cref="KiraEligibleProduct.MissingFields"/>), mas presente como
+    /// <c>{"produto": [...], "general": [...]}</c> em <c>GET /v1/users/{id}</c> — um dicionário,
+    /// não a lista simples que esta versão assumia antes. As duas respostas compartilham
+    /// <see cref="KiraUser"/>, então o tipo precisa tolerar ambas: nulo, ou o dicionário.
+    /// </remarks>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>>? MissingFields { get; init; }
+
+    /// <summary>
+    /// Situação do usuário (ciclo de vida do cadastro, distinta de <see cref="VerificationStatus"/>).
+    /// </summary>
+    /// <remarks>Valor observado contra o sandbox em 2026-07-13: <c>CREATED</c>.</remarks>
+    public string? Status { get; init; }
 
     /// <summary>Criação.</summary>
     public DateTimeOffset? CreatedAt { get; init; }
 
     /// <summary>Última atualização.</summary>
     public DateTimeOffset? UpdatedAt { get; init; }
+}
+
+/// <summary>Avaliação de elegibilidade de um usuário para um produto específico.</summary>
+/// <remarks>Confirmado contra o sandbox em 2026-07-13, dentro de <c>eligible_products</c> em <c>POST /v1/users</c>.</remarks>
+public sealed record KiraEligibleProduct : KiraResponse
+{
+    /// <summary>
+    /// Identificador do produto. <see cref="string"/>, não <see cref="KiraProduct"/> — a Kira já
+    /// devolveu um produto não documentado (<c>usa-virtual-accounts-zenus</c>) neste campo, e um
+    /// enum estrito quebraria a desserialização no próximo produto novo.
+    /// </summary>
+    public string ProductId { get; init; } = string.Empty;
+
+    /// <summary>Código do produto. Observado igual a <see cref="ProductId"/> na prática.</summary>
+    public string? ProductCode { get; init; }
+
+    /// <summary>Nome apresentável do produto.</summary>
+    public string? ProductName { get; init; }
+
+    /// <summary>Se o usuário já reúne todos os campos exigidos por este produto.</summary>
+    public bool? Eligible { get; init; }
+
+    /// <summary>Campos ainda faltantes para este produto específico.</summary>
+    public IReadOnlyList<string> MissingFields { get; init; } = [];
 }
 
 /// <summary>Resposta de <c>POST /v1/users</c>.</summary>

@@ -120,16 +120,31 @@ public sealed class SerializationTests
         user.AdditionalData.ShouldContainKey("nested");
     }
 
+    /// <summary>
+    /// Formato real confirmado contra o sandbox em 2026-07-13 (<c>POST /v1/users</c>):
+    /// <c>eligible_products</c> é uma lista de objetos, com <c>missing_fields</c> por produto —
+    /// não a lista de enum nem o campo <c>missing_fields</c> na raiz que a doc em prosa sugeria.
+    /// </summary>
     [Fact]
-    public void EligibleProductsDeserializeFromKebabCase()
+    public void EligibleProductsDeserializeAsRichObjects()
     {
-        var json = """{"id":"u-1","eligible_products":["usa-virtual-accounts-act"],"missing_fields":["ssn"]}""";
+        var json = """
+            {"id":"u-1","eligible_products":[
+                {"product_id":"usa-virtual-accounts-act","product_code":"usa-virtual-accounts-act","product_name":"USA Virtual Accounts (ACT)","eligible":false,"missing_fields":["ssn"]},
+                {"product_id":"usa-virtual-accounts-zenus","product_code":"usa-virtual-accounts-zenus","product_name":"USA Virtual Accounts (Zenus)","eligible":false,"missing_fields":["birth_date"]}
+            ]}
+            """;
 
         var user = JsonSerializer.Deserialize<KiraUser>(json, KiraJson.Options);
 
         user.ShouldNotBeNull();
-        user.EligibleProducts.ShouldBe([KiraProduct.UsaVirtualAccountsAct]);
-        user.MissingFields.ShouldBe(["ssn"]);
+        user.EligibleProducts.Count.ShouldBe(2);
+        user.EligibleProducts[0].ProductId.ShouldBe("usa-virtual-accounts-act");
+        user.EligibleProducts[0].Eligible.ShouldBe(false);
+        user.EligibleProducts[0].MissingFields.ShouldBe(["ssn"]);
+        // O terceiro produto (zenus) não é documentado nem está em nenhuma versão anterior do
+        // enum KiraProduct — mas por ProductId ser string, não quebra a desserialização.
+        user.EligibleProducts[1].ProductId.ShouldBe("usa-virtual-accounts-zenus");
     }
 
     [Theory]
