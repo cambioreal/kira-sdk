@@ -6,33 +6,86 @@ namespace CambioReal.Kira.Models;
 /// Corpo de <c>POST /v1/payins</c>.
 /// </summary>
 /// <remarks>
-/// O comportamento muda por método:
-/// <list type="bullet">
-///   <item><description><see cref="PayInMethod.Pse"/> (Colômbia, COP): <b>uso único</b>. Exige
-///   <see cref="Amount"/> e <see cref="BankCode"/>.</description></item>
-///   <item><description><see cref="PayInMethod.Spei"/> (México, MXN): <b>reutilizável</b>. Não aceita
-///   <see cref="Amount"/> nem <see cref="BankCode"/> — o pagador escolhe o valor.</description></item>
-/// </list>
-/// Não há PIX: a Kira não coleta pagamentos originados no Brasil.
-/// Os dados do pagador vêm do cadastro do usuário, via <see cref="UserId"/>.
+/// <b>Reescrito em 2026-07-14</b> a partir de erros de validação reais do sandbox, confirmado até
+/// a camada de negócio (chegou a <c>INVALID_BANK_CODE</c>, não mais a erro de schema) para
+/// <see cref="PayInMethod.Pse"/>: o campo discriminador real é <c>type</c>, não <c>method</c>; e
+/// faltavam três campos obrigatórios inteiros — <see cref="Currency"/>, <see cref="CallbackUrl"/>
+/// e <see cref="Settlement"/>.
+/// <para>
+/// <b>Achado importante:</b> ao testar <c>type=SPEI</c> contra o sandbox, a validação rejeitou
+/// com <c>Expected 'PSE', received 'SPEI'</c> — ou seja, <c>SPEI</c> não foi aceito como valor
+/// válido neste cliente/ambiente, apesar de documentado. Pode ser uma limitação do sandbox, do
+/// client de teste, ou a doc estar errada sobre o rail existir nesta forma. Tratar como não
+/// confirmado até verificar novamente.
+/// </para>
+/// Não há PIX: a Kira não coleta pagamentos originados no Brasil. Os dados do pagador vêm do
+/// cadastro do usuário, via <see cref="UserId"/>.
 /// </remarks>
 public sealed record CreatePayInRequest
 {
     /// <summary>Usuário cujos dados identificam o pagador.</summary>
     public required string UserId { get; init; }
 
-    /// <summary>Método de coleta.</summary>
-    public required PayInMethod Method { get; init; }
+    /// <summary>
+    /// Método de coleta. Campo JSON real é <c>type</c>, não <c>method</c> — confirmado contra o
+    /// sandbox em 2026-07-14 (a validação não reconhecia <c>method</c> como campo esperado).
+    /// </summary>
+    public required PayInMethod Type { get; init; }
 
-    /// <summary>Valor. Exigido em PSE, ausente em SPEI.</summary>
+    /// <summary>Valor. Confirmado obrigatório para PSE.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     public decimal? Amount { get; init; }
 
-    /// <summary>Banco do pagador. Exigido em PSE. Obtenha em <c>GET /banks</c>.</summary>
+    /// <summary>
+    /// Moeda de origem. Confirmado obrigatório contra o sandbox em 2026-07-14 — campo inteiro
+    /// ausente do modelo anterior.
+    /// </summary>
+    public required Currency Currency { get; init; }
+
+    /// <summary>Banco do pagador. Confirmado obrigatório para PSE. Obtenha em <c>GET /banks</c>.</summary>
     public string? BankCode { get; init; }
+
+    /// <summary>
+    /// URL que recebe notificações deste PayIn. Confirmado obrigatório contra o sandbox em
+    /// 2026-07-14 — campo inteiro ausente do modelo anterior.
+    /// </summary>
+    public required Uri CallbackUrl { get; init; }
+
+    /// <summary>
+    /// Para onde os fundos liquidados são enviados. Confirmado obrigatório contra o sandbox em
+    /// 2026-07-14 — campo inteiro ausente do modelo anterior. Reutiliza o mesmo formato de conta
+    /// de <see cref="CreateRecipientRequest.Account"/> (mesmo discriminador <c>account_type</c>).
+    /// </summary>
+    public required PayInSettlementInput Settlement { get; init; }
 
     /// <summary>Sua referência interna.</summary>
     public string? Reference { get; init; }
+}
+
+/// <summary>
+/// Beneficiário da liquidação de um <see cref="CreatePayInRequest"/>.
+/// </summary>
+/// <remarks>
+/// Confirmado contra o sandbox em 2026-07-14: mesma exigência de <c>CreateRecipientRequest</c> —
+/// <c>first_name</c>/<c>last_name</c> (pessoa física) ou <c>company_name</c> (pessoa jurídica) é
+/// obrigatório junto de <see cref="Account"/>.
+/// </remarks>
+public sealed record PayInSettlementInput
+{
+    /// <summary>Nome do beneficiário, para pessoa física.</summary>
+    public string? FirstName { get; init; }
+
+    /// <summary>Sobrenome do beneficiário, para pessoa física.</summary>
+    public string? LastName { get; init; }
+
+    /// <summary>Razão social do beneficiário, para pessoa jurídica.</summary>
+    public string? CompanyName { get; init; }
+
+    /// <summary>
+    /// Conta de destino. Testado com sucesso (passou da validação de schema) usando
+    /// <see cref="Models.AccountType.Wallet"/>.
+    /// </summary>
+    public required RecipientAccount Account { get; init; }
 }
 
 /// <summary>Liquidação de um PayIn na blockchain.</summary>

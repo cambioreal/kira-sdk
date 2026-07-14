@@ -213,8 +213,14 @@ public sealed class ResourceTests
         transport.Requests.Single().RequestUri!.ToString().ShouldBe(Root + "banks?country=COL");
     }
 
+    /// <summary>
+    /// Confirmado contra o sandbox em 2026-07-14 (até a camada de negócio, com erro
+    /// <c>INVALID_BANK_CODE</c> em vez de erro de schema): o discriminador real é <c>type</c>,
+    /// não <c>method</c>; e <c>currency</c>, <c>callback_url</c>, <c>settlement</c> são
+    /// obrigatórios.
+    /// </summary>
     [Fact]
-    public async Task CreatePayInSendsMethodUppercased()
+    public async Task CreatePayInSendsTypeUppercased()
     {
         var (client, transport) = TestClient.Create((HttpStatusCode.Created,
             """{"id":"pi-1","method":"PSE","payment_link":"https://pay.example/x","settlement":[]}"""));
@@ -222,9 +228,23 @@ public sealed class ResourceTests
         var payIn = await client.PayIns.CreateAsync(new CreatePayInRequest
         {
             UserId = "u-1",
-            Method = PayInMethod.Pse,
+            Type = PayInMethod.Pse,
             Amount = 500m,
+            Currency = Currency.Cop,
             BankCode = "1007",
+            CallbackUrl = new Uri("https://app.example/payins/callback"),
+            Settlement = new PayInSettlementInput
+            {
+                FirstName = "Kira",
+                LastName = "Settlement",
+                Account = new RecipientAccount
+                {
+                    AccountType = AccountType.Wallet,
+                    Address = "So1anaAddr",
+                    Network = WalletNetwork.Solana,
+                    Token = WalletToken.Usdc,
+                },
+            },
         });
 
         payIn.Method.ShouldBe(PayInMethod.Pse);
@@ -232,8 +252,10 @@ public sealed class ResourceTests
 
         var request = transport.Requests.Single();
         request.Body.ShouldNotBeNull();
-        request.Body.ShouldContain("\"method\":\"PSE\"");
+        request.Body.ShouldContain("\"type\":\"PSE\"");
         request.Body.ShouldContain("\"amount\":\"500\"");
+        request.Body.ShouldContain("\"callback_url\":\"https://app.example/payins/callback\"");
+        request.Body.ShouldContain("\"account_type\":\"WALLET\"");
     }
 
     [Fact]
