@@ -273,28 +273,39 @@ public sealed class ResourceCoverageTests
         request.IdempotencyKey.ShouldBeNull(); // cálculo não cria nada
     }
 
+    /// <summary>
+    /// Confirmado contra o sandbox em 2026-07-14 com uma criação real bem-sucedida
+    /// (<c>country_code=BR</c>/<c>currency=BRL</c>): <c>client_uuid</c>, <c>reference</c> e
+    /// <c>country_code</c> são obrigatórios, e a resposta usa <c>txn_uuid</c>/<c>payment_link</c>,
+    /// não <c>id</c>/<c>url</c>.
+    /// </summary>
     [Fact]
     public async Task CreatePaymentLinkSerializesRedirectUri()
     {
         var (client, transport) = TestClient.Create((HttpStatusCode.Created,
-            """{"id":"pl-1","url":"https://pay.example/pl-1","amount":"100.00","status":"active"}"""));
+            """{"txn_uuid":"pl-1","payment_link":"https://pay.example/pl-1","status":"INIT","payment_type":"CASH"}"""));
 
         var link = await client.PaymentLinks.CreateAsync(new CreatePaymentLinkRequest
         {
-            UserId = "u-1",
+            ClientUuid = "c-1",
             Amount = 100m,
             Currency = Currency.Usd,
+            CountryCode = "BR",
+            Reference = "ref-1",
             RedirectUri = new Uri("https://app.example/thanks"),
         });
 
+        link.Id.ShouldBe("pl-1");
         link.Url.ShouldBe(new Uri("https://pay.example/pl-1"));
-        link.Amount.ShouldBe(100m);
+        link.PaymentType.ShouldBe("CASH");
 
         var request = transport.Requests.Single();
         request.RequestUri!.ToString().ShouldBe(Root + "v1/payment-link");
         request.Body.ShouldNotBeNull();
         request.Body.ShouldContain("\"redirect_uri\":\"https://app.example/thanks\"");
         request.Body.ShouldContain("\"currency\":\"USD\"");
+        request.Body.ShouldContain("\"country_code\":\"BR\"");
+        request.Body.ShouldContain("\"client_uuid\":\"c-1\"");
     }
 
     [Fact]

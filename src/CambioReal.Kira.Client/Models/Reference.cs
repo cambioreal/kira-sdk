@@ -2,18 +2,50 @@ using System.Text.Json.Serialization;
 
 namespace CambioReal.Kira.Models;
 
-/// <summary>Corpo de <c>POST /v1/payment-link</c>.</summary>
+/// <summary>
+/// Corpo de <c>POST /v1/payment-link</c>.
+/// </summary>
+/// <remarks>
+/// <b>Reescrito em 2026-07-14</b> a partir de uma criação real bem-sucedida contra o sandbox
+/// (<c>country_code=BR</c>/<c>currency=BRL</c> — <c>country_code=US</c> falha à parte, com
+/// <c>acct_type must be USD for US recipients</c>, aparentemente uma regra de negócio do
+/// recipient/conta, não um campo de request faltante). Faltavam três campos obrigatórios
+/// inteiros: <see cref="ClientUuid"/>, <see cref="Reference"/> (existia, mas era opcional) e
+/// <see cref="CountryCode"/>.
+/// </remarks>
 public sealed record CreatePaymentLinkRequest
 {
-    /// <summary>Usuário que solicita o pagamento.</summary>
-    public required string UserId { get; init; }
+    /// <summary>
+    /// Usuário que solicita o pagamento. Não confirmado como campo reconhecido pela API — nunca
+    /// apareceu em nenhuma mensagem de erro de validação, mesmo quando ausente. Mantido por não
+    /// ter sido comprovadamente descartado.
+    /// </summary>
+    public string? UserId { get; init; }
+
+    /// <summary>
+    /// Identificador do seu client Kira (o mesmo <see cref="KiraOptions.ClientId"/> usado para
+    /// autenticar). Confirmado obrigatório contra o sandbox em 2026-07-14 — passar outro valor
+    /// (ex.: um <c>user_id</c>) falha com <c>PL_AUTH_001 Client UUID mismatch</c>.
+    /// </summary>
+    public required string ClientUuid { get; init; }
 
     /// <summary>Valor solicitado.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     public decimal? Amount { get; init; }
 
-    /// <summary>Moeda. Payment links são em USD.</summary>
+    /// <summary>
+    /// Moeda. A doc dizia "sempre USD", mas <c>BRL</c> foi aceito e criou o link com sucesso
+    /// contra o sandbox em 2026-07-14 — não é USD-only.
+    /// </summary>
     public Currency? Currency { get; init; }
+
+    /// <summary>
+    /// País do recipient, ISO 3166-1 <b>alpha-2</b> (não alpha-3 como o resto do SDK — confirmado
+    /// contra o sandbox: <c>"USA"</c> falha com <c>country_code must be 2 characters</c>).
+    /// Confirmado obrigatório em 2026-07-14. <c>US</c> tem uma restrição de negócio adicional
+    /// não resolvida (ver <see cref="CreatePaymentLinkRequest"/>).
+    /// </summary>
+    public required string CountryCode { get; init; }
 
     /// <summary>Destino após o pagamento.</summary>
     public Uri? RedirectUri { get; init; }
@@ -21,28 +53,60 @@ public sealed record CreatePaymentLinkRequest
     /// <summary>Descrição apresentada ao pagador.</summary>
     public string? Description { get; init; }
 
-    /// <summary>Sua referência interna.</summary>
-    public string? Reference { get; init; }
+    /// <summary>
+    /// Sua referência interna. Confirmado obrigatório contra o sandbox em 2026-07-14 — antes
+    /// desta versão era opcional.
+    /// </summary>
+    public required string Reference { get; init; }
 }
 
-/// <summary>Payment link criado.</summary>
+/// <summary>
+/// Payment link criado. Confirmado contra o sandbox em 2026-07-14 (criação real bem-sucedida).
+/// </summary>
 public sealed record KiraPaymentLink : KiraResponse
 {
-    /// <summary>Identificador do link.</summary>
+    /// <summary>Identificador do link. Campo real é <c>txn_uuid</c>, não <c>id</c> — não existe campo <c>id</c> na resposta.</summary>
+    [JsonPropertyName("txn_uuid")]
     public string Id { get; init; } = string.Empty;
 
-    /// <summary>URL a apresentar ao pagador.</summary>
+    /// <summary>URL a apresentar ao pagador. Campo real é <c>payment_link</c>, não <c>url</c>.</summary>
+    [JsonPropertyName("payment_link")]
     public Uri? Url { get; init; }
 
-    /// <summary>Situação.</summary>
+    /// <summary>Situação. Valor observado na criação: <c>INIT</c>.</summary>
     public string? Status { get; init; }
 
-    /// <summary>Valor.</summary>
+    /// <summary>Forma de pagamento. Valor observado: <c>CASH</c>. Campo novo, não documentado.</summary>
+    public string? PaymentType { get; init; }
+
+    /// <summary>Eco de <see cref="CreatePaymentLinkRequest.ClientUuid"/>.</summary>
+    public string? ClientUuid { get; init; }
+
+    /// <summary>Eco de <see cref="CreatePaymentLinkRequest.Reference"/>.</summary>
+    public string? Reference { get; init; }
+
+    /// <summary>
+    /// Valor. Não confirmado presente na resposta de criação — <c>amount</c>/<c>currency</c> não
+    /// vieram de volta no teste contra o sandbox, apesar de enviados no request.
+    /// </summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
     public decimal? Amount { get; init; }
 
-    /// <summary>Expiração.</summary>
+    /// <summary>
+    /// Expiração. Não confirmado presente na resposta de criação — não observado no sandbox.
+    /// </summary>
     public DateTimeOffset? ExpiresAt { get; init; }
+
+    /// <summary>
+    /// Criação. Confirmado contra o sandbox em 2026-07-14 — ISO 8601 padrão aqui (diferente do
+    /// formato não padrão de <see cref="KiraRecipient.CreatedAt"/>).
+    /// </summary>
+    [JsonPropertyName("created_ts")]
+    public DateTimeOffset? CreatedAt { get; init; }
+
+    /// <summary>Última atualização.</summary>
+    [JsonPropertyName("updated_ts")]
+    public DateTimeOffset? UpdatedAt { get; init; }
 }
 
 /// <summary>
