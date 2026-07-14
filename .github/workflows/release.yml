@@ -30,11 +30,17 @@ jobs:
       - run: dotnet test Kira.slnx -c Release
 
       - run: >
+          dotnet pack src/CambioReal.Contracts/CambioReal.Contracts.csproj
+          -c Release -o artifacts
+          -p:Version=${{ steps.version.outputs.value }}
+
+      - run: >
           dotnet pack src/CambioReal.Kira.Client/CambioReal.Kira.Client.csproj
           -c Release -o artifacts
           -p:Version=${{ steps.version.outputs.value }}
 
       # GITHUB_TOKEN basta para publicar na própria org; não é preciso PAT.
+      # Publica os dois pacotes (Contracts + Kira.Client) na mesma tag/versão.
       - name: Push para o GitHub Packages
         run: >
           dotnet nuget push artifacts/*.nupkg

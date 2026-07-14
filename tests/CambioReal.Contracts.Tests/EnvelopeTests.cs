@@ -1,8 +1,8 @@
-using CambioReal.Kira.Contracts;
+using CambioReal.Contracts;
 using Shouldly;
 using Xunit;
 
-namespace CambioReal.Kira.Tests.Contracts;
+namespace CambioReal.Contracts.Tests;
 
 public sealed class EnvelopeTests
 {

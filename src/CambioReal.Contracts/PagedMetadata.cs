@@ -1,4 +1,4 @@
-namespace CambioReal.Kira.Contracts;
+namespace CambioReal.Contracts;
 
 /// <summary>
 /// Metadados de paginação de uma coleção, isolados de <see cref="Envelope{T}.Data"/> — a

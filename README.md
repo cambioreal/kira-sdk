@@ -101,23 +101,33 @@ pass show kira/webhook-secret
 
 ## Contrato canônico de resposta (Response Envelope)
 
-`CambioReal.Kira.Contracts` (`src/CambioReal.Kira.Client/Contracts/`) implementa a referência do
-contrato de resposta canônico da plataforma — `Envelope<T>`, `ProblemDetail` (RFC 9457 — Problem
-Details for HTTP APIs), `Warning`, `ResponseMetadata` e `PagedMetadata`. RFC completa:
-`_pipeline/rfc-kira-sdk-canonical-response-envelope.md` no vault (auditoria de `cambio-real-v3`,
-alternativas consideradas, plano de migração).
+Este repositório publica **dois pacotes**: `CambioReal.Kira.Client` (o SDK, descrito acima) e
+[`CambioReal.Contracts`](src/CambioReal.Contracts/README.md) — a referência do contrato de
+resposta canônico da plataforma (`Envelope<T>`, `ProblemDetail` — RFC 9457, `Warning`,
+`ResponseMetadata`, `PagedMetadata`), **sem nenhuma dependência de Kira ou de infraestrutura**.
+RFC completa: `_pipeline/rfc-kira-sdk-canonical-response-envelope.md` no vault (auditoria de
+`cambio-real-v3`, alternativas consideradas, plano de migração).
+
+Inicialmente estes tipos foram implementados dentro do namespace do Kira Client
+(`CambioReal.Kira.Contracts`) — **movidos para um pacote próprio em seguida**: um contrato
+"canônico" que só existe amarrado a uma integração específica não é reutilizável de verdade.
+Qualquer serviço da plataforma sem nenhuma relação com Kira pode referenciar
+`CambioReal.Contracts` sozinho, sem herdar `HttpClient` config, `KiraOptions`, handler de auth ou
+conversores snake_case da Kira.
 
 **O `KiraClient` continua devolvendo `T` e lançando `KiraApiException` em falha** — o contrato
 canônico não muda a superfície pública do SDK. Bibliotecas cliente .NET usam exceções, não
 `Result<T>`/`Envelope<T>`, como retorno (convenção estabelecida, Microsoft REST API Guidelines);
 forçar `Envelope<T>` aqui seria adotar idioma de servidor HTTP dentro de um cliente, quebrando os
-103 testes existentes e a lógica de retry/single-flight de token já embutida em
+testes existentes e a lógica de retry/single-flight de token já embutida em
 `KiraAuthenticationHandler`, sem necessidade real — o gap que motivou este contrato (achado da
 auditoria) é inteiramente do lado do *servidor* `cambio-real-v3`, não deste SDK.
 
-O que existe aqui é a peça reutilizável: `KiraApiException.ToProblemDetails()` traduz qualquer
-exceção do SDK em um ou mais `ProblemDetail`, prontos para compor o `Envelope<T>` de saída de
-quem consumir o kira-sdk dentro de um serviço HTTP.
+O que o `CambioReal.Kira.Client` acrescenta é a peça de integração:
+`KiraApiException.ToProblemDetails()` (em `CambioReal.Kira.Contracts`, dentro do SDK — não
+confundir com o pacote `CambioReal.Contracts`) traduz qualquer exceção do SDK em um ou mais
+`ProblemDetail`, prontos para compor o `Envelope<T>` de saída de quem consumir o kira-sdk dentro
+de um serviço HTTP.
 
 ```csharp
 try
@@ -135,9 +145,9 @@ catch (KiraApiException ex)
 
 `Retryable` e `Severity` são computados a partir do `HttpStatusCode` da exceção (429/502/503/504/500
 → `Retryable=true`; `>=500` → `Severity.Critical`) — o chamador não precisa declarar nada.
-Serialização usa `EnvelopeJson.Options` (`Serialization/EnvelopeJson.cs`), **camelCase**,
-deliberadamente separado de `KiraJson.Options` (snake_case — o formato de fio *da Kira*, não o
-nosso contrato de saída).
+Serialização usa `EnvelopeJson.Options` (`src/CambioReal.Contracts/Serialization/EnvelopeJson.cs`),
+**camelCase**, deliberadamente separado de `KiraJson.Options` (snake_case — o formato de fio *da
+Kira*, não o nosso contrato de saída).
 
 **Nota de portabilidade para `cambio-real-v3`**: portar este padrão para um servidor ASP.NET Core
 real exige, além de reusar estes tipos: (1) `Envelope<T>` como corpo de toda resposta de

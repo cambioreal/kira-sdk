@@ -1,12 +1,14 @@
 using System.Net;
 using System.Text.Json;
+using CambioReal.Contracts;
 using CambioReal.Kira.Http;
 
 namespace CambioReal.Kira.Contracts;
 
 /// <summary>
-/// Traduz <see cref="KiraApiException"/> para o contrato canônico (<see cref="ProblemDetail"/>) —
-/// a demonstração viva de como este SDK se encaixa no <see cref="Envelope{T}"/> de quem o consome.
+/// Traduz <see cref="KiraApiException"/> para o contrato canônico (<see cref="ProblemDetail"/>,
+/// de <c>CambioReal.Contracts</c>) — a demonstração viva de como este SDK se encaixa no
+/// <see cref="Envelope{T}"/> de quem o consome.
 /// </summary>
 public static class KiraApiExceptionExtensions
 {

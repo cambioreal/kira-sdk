@@ -1,4 +1,5 @@
 using System.Net;
+using CambioReal.Contracts;
 using CambioReal.Kira.Contracts;
 using CambioReal.Kira.Http;
 using Shouldly;
@@ -119,10 +120,10 @@ public sealed class KiraApiExceptionExtensionsTests
     public void EnvelopeWithProblemDetailsRoundTripsThroughEnvelopeJson()
     {
         var exception = new KiraApiException(HttpStatusCode.BadRequest, "VALIDATION_ERROR", "erro", null);
-        var envelope = CambioReal.Kira.Contracts.Envelope.Fail<object>(
+        var envelope = Envelope.Fail<object>(
             exception.ToProblemDetails(), "VALIDATION_ERROR", "Corpo inválido.");
 
-        var json = System.Text.Json.JsonSerializer.Serialize(envelope, CambioReal.Kira.Serialization.EnvelopeJson.Options);
+        var json = System.Text.Json.JsonSerializer.Serialize(envelope, CambioReal.Contracts.Serialization.EnvelopeJson.Options);
 
         json.ShouldContain("\"success\":false");
         json.ShouldContain("\"code\":\"VALIDATION_ERROR\"");

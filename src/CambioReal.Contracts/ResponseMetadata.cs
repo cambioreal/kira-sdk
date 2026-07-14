@@ -1,16 +1,16 @@
-namespace CambioReal.Kira.Contracts;
+namespace CambioReal.Contracts;
 
 /// <summary>
 /// Metadados técnicos de um <see cref="Envelope{T}"/>.
 /// </summary>
 /// <remarks>
-/// Em uma biblioteca cliente como o kira-sdk, nem todo campo é conhecido no ponto de origem —
-/// <see cref="TenantId"/>, <see cref="AuthenticatedUser"/> e <see cref="Locale"/>, por exemplo,
-/// pertencem ao contexto HTTP de quem consome o SDK (ex.: um controller ASP.NET Core em
-/// cambio-real-v3), não ao SDK em si. Populá-los é responsabilidade do chamador ao montar seu
-/// próprio <see cref="Envelope{T}"/> de saída — o kira-sdk só preenche o que legitimamente sabe
-/// (<see cref="Service"/>, <see cref="ApiVersion"/>, <see cref="Timestamp"/>,
-/// <see cref="DurationMs"/> quando medido).
+/// Em um consumidor que seja uma biblioteca cliente (ex.: o kira-sdk), nem todo campo é
+/// conhecido no ponto de origem — <see cref="TenantId"/>, <see cref="AuthenticatedUser"/> e
+/// <see cref="Locale"/>, por exemplo, pertencem ao contexto HTTP de quem consome o SDK (ex.: um
+/// controller ASP.NET Core em cambio-real-v3), não ao SDK em si. Populá-los é responsabilidade
+/// do chamador ao montar seu próprio <see cref="Envelope{T}"/> de saída — o SDK só preenche o
+/// que legitimamente sabe (<see cref="Service"/>, <see cref="ApiVersion"/>,
+/// <see cref="Timestamp"/>, <see cref="DurationMs"/> quando medido).
 /// </remarks>
 public sealed record ResponseMetadata
 {
@@ -59,9 +59,8 @@ public sealed record ResponseMetadata
     /// <summary>
     /// Campos técnicos adicionais, aplicáveis apenas em alguns contextos: cache, rate limit,
     /// idempotency key, retry count, processing node, deployment version, feature flags,
-    /// execution mode. Um dicionário aberto em vez de propriedades fixas — o mesmo princípio de
-    /// <see cref="Models.KiraResponse.AdditionalData"/> já usado no restante do SDK: nem todo
-    /// contexto se conhece de antemão, e não deve ser descartado.
+    /// execution mode. Um dicionário aberto em vez de propriedades fixas — nem todo contexto se
+    /// conhece de antemão, e não deve ser descartado.
     /// </summary>
     public IReadOnlyDictionary<string, object?>? Extensions { get; init; }
 }

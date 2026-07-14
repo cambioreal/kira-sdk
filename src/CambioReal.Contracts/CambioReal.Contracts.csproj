@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>CambioReal.Contracts</RootNamespace>
+    <PackageId>CambioReal.Contracts</PackageId>
+    <Description>Contrato canônico de resposta HTTP da plataforma CambioReal — Envelope&lt;T&gt;, ProblemDetail (RFC 9457), metadata técnica e paginação isolada. Sem dependências de infraestrutura ou de qualquer integração específica.</Description>
+    <IsPackable>true</IsPackable>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="CambioReal.Contracts.Tests" />
+  </ItemGroup>
+
+</Project>

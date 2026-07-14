@@ -1,4 +1,4 @@
-namespace CambioReal.Kira.Contracts;
+namespace CambioReal.Contracts;
 
 /// <summary>
 /// Contrato canônico de resposta da plataforma — o mesmo formato para sucesso e erro,
@@ -7,15 +7,15 @@ namespace CambioReal.Kira.Contracts;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Uso no kira-sdk (biblioteca cliente):</b> este tipo não é o retorno de nenhum método de
-/// <see cref="KiraClient"/> — o SDK continua devolvendo <c>T</c> diretamente e lançando
-/// <see cref="Http.KiraApiException"/> em falha (idioma de client library, RFC 9457 no §2 deste
-/// RFC explica o porquê). <see cref="Envelope{T}"/> existe aqui como a implementação de
-/// referência dos tipos do contrato, para quem consumir o kira-sdk dentro de um serviço HTTP
-/// (ex.: um controller ASP.NET Core em cambio-real-v3) montar sua própria resposta de saída —
-/// tipicamente via <c>Envelope.Ok(data, ...)</c> no caminho feliz e
-/// <c>Envelope.Fail&lt;T&gt;(exception.ToProblemDetails(), ...)</c> (ver
-/// <see cref="KiraApiExceptionExtensions.ToProblemDetails"/>) ao traduzir uma falha do Kira.
+/// Este pacote (<c>CambioReal.Contracts</c>) não depende de nenhuma integração ou serviço
+/// específico — é a peça reutilizável entre repositórios. O <c>kira-sdk</c> (client library) o
+/// referencia sem inverter a dependência: <c>KiraClient</c> continua devolvendo <c>T</c>
+/// diretamente e lançando <c>KiraApiException</c> em falha (idioma de client library — RFC 9457
+/// no §2 do RFC completo explica o porquê); <c>KiraApiExceptionExtensions.ToProblemDetails()</c>,
+/// do lado do kira-sdk, traduz essas exceções para <see cref="ProblemDetail"/>, prontos para
+/// compor um <see cref="Envelope{T}"/> de saída — tipicamente via <c>Envelope.Ok(data, ...)</c>
+/// no caminho feliz e <c>Envelope.Fail&lt;T&gt;(problemDetails, ...)</c> na falha, dentro de um
+/// serviço HTTP real (ex.: um controller ASP.NET Core em cambio-real-v3).
 /// </para>
 /// <para>
 /// <see cref="Data"/> é <see langword="null"/> quando não há conteúdo — nunca <c>{}</c>, <c>[]</c>

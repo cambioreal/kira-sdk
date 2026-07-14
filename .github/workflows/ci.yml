@@ -35,6 +35,8 @@ jobs:
 
       # Empacotar no CI garante que um erro de pack (README ausente, metadata inválida)
       # apareça no PR, e não só na hora de publicar uma tag.
+      - run: dotnet pack src/CambioReal.Contracts/CambioReal.Contracts.csproj -c Release --no-build -o artifacts
+
       - run: dotnet pack src/CambioReal.Kira.Client/CambioReal.Kira.Client.csproj -c Release --no-build -o artifacts
 
       - uses: actions/upload-artifact@v4

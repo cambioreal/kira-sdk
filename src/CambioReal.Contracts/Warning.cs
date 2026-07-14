@@ -1,4 +1,4 @@
-namespace CambioReal.Kira.Contracts;
+namespace CambioReal.Contracts;
 
 /// <summary>
 /// Aviso não bloqueante dentro de <see cref="Envelope{T}.Warnings"/> — nunca impede o

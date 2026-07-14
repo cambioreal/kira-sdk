@@ -1,4 +1,4 @@
-namespace CambioReal.Kira.Contracts;
+namespace CambioReal.Contracts;
 
 /// <summary>Gravidade de um <see cref="ProblemDetail"/> dentro de um <see cref="Envelope{T}"/>.</summary>
 public enum ErrorSeverity

@@ -1,4 +1,4 @@
-namespace CambioReal.Kira.Contracts;
+namespace CambioReal.Contracts;
 
 /// <summary>
 /// Um erro dentro de <see cref="Envelope{T}.Errors"/>, seguindo RFC 9457 (Problem Details for
