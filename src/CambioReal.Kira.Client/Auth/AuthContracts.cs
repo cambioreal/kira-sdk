@@ -6,6 +6,15 @@ internal sealed record AuthTokenRequest(string ClientId, string Password);
 /// <summary>Resposta de <c>POST /auth</c>: <c>access_token</c>, <c>expires_in</c>, <c>token_type</c>.</summary>
 internal sealed record AuthTokenResponse(string AccessToken, int ExpiresIn, string TokenType);
 
+/// <summary>
+/// Envelope real de <c>POST /auth</c>: <c>{"message": "...", "data": {access_token, expires_in, token_type}}</c>.
+/// </summary>
+/// <remarks>
+/// Confirmado contra o sandbox em 2026-07-13 — a doc em prosa não menciona o envelope, só os
+/// campos internos. Sem desempacotar <see cref="Data"/>, todo campo lido na raiz vem vazio.
+/// </remarks>
+internal sealed record AuthTokenEnvelope(AuthTokenResponse? Data);
+
 /// <summary>Token em cache com seu instante de expiração absoluto.</summary>
 internal sealed record CachedAccessToken(string Value, DateTimeOffset ExpiresAtUtc);
 

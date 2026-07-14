@@ -114,7 +114,8 @@ internal sealed class KiraTokenProvider : IKiraTokenProvider, IDisposable
                 body);
         }
 
-        var payload = await response.Content.ReadFromJsonAsync<AuthTokenResponse>(KiraJson.Options, cancellationToken)
+        var envelope = await response.Content.ReadFromJsonAsync<AuthTokenEnvelope>(KiraJson.Options, cancellationToken);
+        var payload = envelope?.Data
             ?? throw new KiraAuthenticationException("A Kira devolveu um corpo vazio em POST /auth.");
 
         if (string.IsNullOrWhiteSpace(payload.AccessToken))

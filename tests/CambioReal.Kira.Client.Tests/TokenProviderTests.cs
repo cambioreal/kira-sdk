@@ -121,8 +121,12 @@ public sealed class TokenProviderTests
         error.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
+    /// <summary>
+    /// Envelope real confirmado contra o sandbox em 2026-07-13: os campos vêm dentro de <c>data</c>,
+    /// não na raiz.
+    /// </summary>
     private static string TokenResponse(string token, int expiresIn = 3600) =>
-        $$"""{"access_token":"{{token}}","expires_in":{{expiresIn}},"token_type":"Bearer"}""";
+        $$$"""{"message":"Auth token","data":{"access_token":"{{{token}}}","expires_in":{{{expiresIn}}},"token_type":"Bearer"}}""";
 
     private static (IKiraTokenProvider Provider, RecordingHttpMessageHandler Transport) Build(
         TimeProvider clock,
