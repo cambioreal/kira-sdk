@@ -74,9 +74,10 @@ public sealed class ResourceCoverageTests
     }
 
     /// <summary>
-    /// Campos obrigatórios de SWIFT confirmados contra o sandbox em 2026-07-14:
-    /// <c>account_number</c>, <c>swift_code</c>, <c>bank_name</c>, <c>bank_address</c> — este
-    /// último não existia no modelo anterior.
+    /// Criação real, ponta a ponta, confirmada contra o sandbox em 2026-07-15: <c>bank_address</c>
+    /// exige um <b>objeto</b> estruturado para SWIFT (<c>"Expected object, received string"</c> se
+    /// enviado como string — correção da suposição de 2026-07-14, que assumia string) e o endereço
+    /// do beneficiário na raiz (<c>address</c>) também é objeto e obrigatório.
     /// </summary>
     [Fact]
     public async Task CreateSwiftRecipientOmitsOptionalContactFields()
@@ -87,13 +88,14 @@ public sealed class ResourceCoverageTests
         {
             UserId = "u-1",
             CompanyName = "Acme Ltd",
+            Address = new KiraAddress { StreetName = "123 Main St", City = "New York", State = "NY", PostalCode = "10001", Country = "US" },
             Account = new RecipientAccount
             {
                 AccountType = AccountType.Swift,
                 AccountNumber = "0001234567",
                 SwiftCode = "DEUTDEFF",
                 BankName = "Deutsche Bank",
-                BankAddress = "Taunusanlage 12, Frankfurt",
+                BankAddress = new KiraAddress { StreetName = "Taunusanlage 12", City = "Frankfurt", State = "HE", PostalCode = "60325", Country = "DE" },
                 Iban = "DE89370400440532013000",
             },
         });
@@ -102,10 +104,116 @@ public sealed class ResourceCoverageTests
         body.ShouldNotBeNull();
         body.ShouldContain("\"swift_code\":\"DEUTDEFF\"");
         body.ShouldContain("\"company_name\":\"Acme Ltd\"");
+        body.ShouldContain("\"bank_address\":{\"street_name\":\"Taunusanlage 12\"");
+        body.ShouldContain("\"address\":{\"street_name\":\"123 Main St\"");
 
         // Opcionais; não devem ir como null.
         body.ShouldNotContain("email");
         body.ShouldNotContain("phone");
+    }
+
+    /// <summary>
+    /// Confirmado contra o sandbox em 2026-07-15: para ACH, <c>bank_address</c> é uma <b>string</b>
+    /// solta (ao contrário de SWIFT/WIRE, que exigem objeto), mas o <c>address</c> do beneficiário na
+    /// raiz é objeto estruturado igual aos demais rails domésticos dos EUA.
+    /// </summary>
+    [Fact]
+    public async Task CreateAchRecipientUsesStringBankAddressWithStructuredRootAddress()
+    {
+        var (client, transport) = TestClient.Create((HttpStatusCode.Created, """{"recipient_id":"r-3","account_type":"ACH"}"""));
+
+        await client.Recipients.CreateAsync(new CreateRecipientRequest
+        {
+            UserId = "u-1",
+            FirstName = "Kira",
+            LastName = "Recipient",
+            Address = new KiraAddress { StreetName = "123 Main St", City = "New York", State = "NY", PostalCode = "10001", Country = "US" },
+            Account = new RecipientAccount
+            {
+                AccountType = AccountType.Ach,
+                AccountNumber = "000123456789",
+                RoutingNumber = "021000021",
+                BankName = "JPMorgan Chase",
+                BankAddress = "270 Park Ave, New York, NY 10017, US",
+            },
+        });
+
+        var body = transport.Requests.Single().Body;
+        body.ShouldNotBeNull();
+        body.ShouldContain("\"bank_address\":\"270 Park Ave, New York, NY 10017, US\"");
+        body.ShouldContain("\"address\":{\"street_name\":\"123 Main St\"");
+    }
+
+    /// <summary>
+    /// INSTANT_PAY foi criado com sucesso (201) contra o sandbox em 2026-07-15, apesar da
+    /// contradição de documentação registrada em <see cref="AccountType"/> (a API Reference do
+    /// <c>createRecipient</c> não lista INSTANT_PAY entre os tipos aceitos). Payload igual ao de ACH.
+    /// </summary>
+    [Fact]
+    public async Task CreateInstantPayRecipientIsAcceptedDespiteDocumentedContradiction()
+    {
+        var (client, transport) = TestClient.Create((HttpStatusCode.Created, """{"recipient_id":"r-4","account_type":"INSTANT_PAY"}"""));
+
+        var recipient = await client.Recipients.CreateAsync(new CreateRecipientRequest
+        {
+            UserId = "u-1",
+            FirstName = "Kira",
+            LastName = "Recipient",
+            Address = new KiraAddress { StreetName = "123 Main St", City = "New York", State = "NY", PostalCode = "10001", Country = "US" },
+            Account = new RecipientAccount
+            {
+                AccountType = AccountType.InstantPay,
+                AccountNumber = "000123456789",
+                RoutingNumber = "021000021",
+                BankName = "JPMorgan Chase",
+                BankAddress = "270 Park Ave, New York, NY 10017, US",
+            },
+        });
+
+        recipient.AccountType.ShouldBe(AccountType.InstantPay);
+        var body = transport.Requests.Single().Body;
+        body.ShouldNotBeNull();
+        body.ShouldContain("\"account_type\":\"INSTANT_PAY\"");
+    }
+
+    /// <summary>
+    /// Confirmado contra o sandbox em 2026-07-15: BRL usa chave PIX, não os campos bancários
+    /// genéricos. A chave real dos campos de documento é <c>doc_type</c>/<c>doc_number</c>, não
+    /// <c>document_type</c>/<c>document_number</c> (suposição de 2026-07-14, nunca confirmada e
+    /// agora corrigida) — a Kira rejeitava <c>document_type</c> com <c>"doc_type: Required"</c>.
+    /// </summary>
+    [Fact]
+    public async Task CreateBrlRecipientSerializesPixAndDocFields()
+    {
+        var (client, transport) = TestClient.Create((HttpStatusCode.Created, """{"recipient_id":"r-5","account_type":"BRL"}"""));
+
+        await client.Recipients.CreateAsync(new CreateRecipientRequest
+        {
+            UserId = "u-1",
+            FirstName = "Kira",
+            LastName = "Recipient",
+            Account = new RecipientAccount
+            {
+                AccountType = AccountType.Brl,
+                AccountNumber = "000123456789",
+                PixKeyType = "code_cpf",
+                PixKey = "12345678909",
+                City = "Sao Paulo",
+                DocType = "cpf",
+                DocNumber = "12345678909",
+                DocCountryCode = "BR",
+            },
+        });
+
+        var body = transport.Requests.Single().Body;
+        body.ShouldNotBeNull();
+        body.ShouldContain("\"pix_key_type\":\"code_cpf\"");
+        body.ShouldContain("\"pix_key\":\"12345678909\"");
+        body.ShouldContain("\"doc_type\":\"cpf\"");
+        body.ShouldContain("\"doc_number\":\"12345678909\"");
+        body.ShouldContain("\"doc_country_code\":\"BR\"");
+        body.ShouldNotContain("document_type");
+        body.ShouldNotContain("document_number");
     }
 
     /// <summary>

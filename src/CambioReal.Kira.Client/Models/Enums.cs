@@ -156,8 +156,10 @@ public enum VirtualAccountStatus
 /// <b>Contradição conhecida.</b> A API Reference do <c>initiatePayout</c> aceita apenas
 /// <see cref="Wire"/> e <see cref="Swift"/>; o guia de Payouts inclui <see cref="Ach"/> e
 /// <see cref="InstantPay"/>; o <c>previewPayout</c> aceita ACH, WIRE, SWIFT e WALLET.
-/// Pior: <see cref="InstantPay"/> não aparece na lista de tipos aceitos ao criar um recipient,
-/// então pode não haver como criar o destinatário que o guia diz suportar.
+/// <see cref="InstantPay"/> não aparece na lista de tipos aceitos ao criar um recipient na doc —
+/// mas, na prática, <b>é aceito</b>: confirmado contra o sandbox em 2026-07-15 (<c>201</c> real,
+/// mesmo payload de <see cref="Ach"/>). A contradição de documentação existe, mas não bloqueia a
+/// criação do destinatário.
 /// </remarks>
 [JsonConverter(typeof(UpperSnakeCaseEnumConverter<AccountType>))]
 public enum AccountType
