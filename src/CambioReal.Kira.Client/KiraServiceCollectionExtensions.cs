@@ -38,10 +38,18 @@ public static class KiraServiceCollectionExtensions
         services.AddOptions<KiraOptions>().Validate(
             options =>
             {
-                options.Validate();
-                return true;
+                try
+                {
+                    options.Validate();
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
             },
-            "A configuração do KiraOptions é inválida.");
+            "A configuração do KiraOptions é inválida.")
+            .ValidateOnStart();
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IKiraTokenProvider, KiraTokenProvider>();
