@@ -115,6 +115,11 @@ Qualquer serviço da plataforma sem nenhuma relação com Kira pode referenciar
 `CambioReal.Contracts` sozinho, sem herdar `HttpClient` config, `KiraOptions`, handler de auth ou
 conversores snake_case da Kira.
 
+Client e Contracts são publicados na mesma versão. O nuspec do Client declara essa versão como
+piso compatível de Contracts, seguindo a resolução padrão do NuGet; os gateways da plataforma
+fixam ambos diretamente na mesma release para que o conjunto do produto seja determinístico. O
+CI valida o par de pacotes após cada `dotnet pack` e a release repete o mesmo gate antes do push.
+
 **O `KiraClient` continua devolvendo `T` e lançando `KiraApiException` em falha** — o contrato
 canônico não muda a superfície pública do SDK. Bibliotecas cliente .NET usam exceções, não
 `Result<T>`/`Envelope<T>`, como retorno (convenção estabelecida, Microsoft REST API Guidelines);
