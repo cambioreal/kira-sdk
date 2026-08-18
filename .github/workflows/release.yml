@@ -39,6 +39,8 @@ jobs:
           -c Release -o artifacts
           -p:Version=${{ steps.version.outputs.value }}
 
+      - run: bash eng/verify-package-set.sh artifacts ${{ steps.version.outputs.value }}
+
       # GITHUB_TOKEN basta para publicar na própria org; não é preciso PAT.
       # Publica os dois pacotes (Contracts + Kira.Client) na mesma tag/versão.
       - name: Push para o GitHub Packages
