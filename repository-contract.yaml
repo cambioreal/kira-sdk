@@ -1,0 +1,7 @@
+schema_version: repository-contract/v1
+repository_id: 9e166862-4bae-4df3-a9d7-832229a07ff5
+identity:
+  remotes:
+    - github.com/cambioreal/kira-sdk
+capabilities:
+  manifest: null
