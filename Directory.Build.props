@@ -22,13 +22,17 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Identidade do pacote">
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <!-- Resíduo corrigido: a versão publicada vem da tag (ver release.yml). Manter este
+         prefixo alinhado à última release evita que um pack local produza 0.1.0. -->
+    <VersionPrefix>0.3.1</VersionPrefix>
     <Product>CambioReal Kira Client</Product>
     <Company>Hideaki Serviços</Company>
     <Authors>Hideaki Serviços</Authors>
     <RepositoryUrl>https://github.com/cambioreal/kira-sdk</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/cambioreal/kira-sdk</PackageProjectUrl>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
 </Project>
